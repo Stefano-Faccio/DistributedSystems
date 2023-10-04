@@ -1,0 +1,4 @@
+C:\Users\stefa\Documents\GitHub\DistributedSystems\DistributedKeyValueStore.NET\obj\Debug\net7.0\DistributedKeyValueStore.NET.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\stefa\Documents\GitHub\DistributedSystems\DistributedKeyValueStore.NET\obj\Debug\net7.0\DistributedKeyValueStore.NET.AssemblyInfoInputs.cache
+C:\Users\stefa\Documents\GitHub\DistributedSystems\DistributedKeyValueStore.NET\obj\Debug\net7.0\DistributedKeyValueStore.NET.AssemblyInfo.cs
+C:\Users\stefa\Documents\GitHub\DistributedSystems\DistributedKeyValueStore.NET\obj\Debug\net7.0\DistributedKeyValueStore.NET.csproj.CoreCompileInputs.cache
