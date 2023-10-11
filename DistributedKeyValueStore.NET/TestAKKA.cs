@@ -10,7 +10,6 @@ namespace DistributedKeyValueStore.NET
     class TestAkka
     {
 
-
         static void Main(string[] args)
         {
             // create a new actor system (a container for actors)
