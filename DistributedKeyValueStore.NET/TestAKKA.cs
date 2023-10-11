@@ -7,8 +7,10 @@ using Akka.Actor;
 
 namespace DistributedKeyValueStore.NET
 {
-    class MyProgram
+    class TestAkka
     {
+
+
         static void Main(string[] args)
         {
             // create a new actor system (a container for actors)
