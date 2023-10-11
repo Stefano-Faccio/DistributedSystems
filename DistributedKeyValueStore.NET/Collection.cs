@@ -15,9 +15,7 @@ namespace DistributedKeyValueStore.NET
     {
         private Dictionary<uint, Document> dictionary;
 
-        //Todo implementare il comparer
-
-        public Collection()
+         public Collection()
         {
             dictionary = new Dictionary<uint, Document>();
         }
@@ -78,7 +76,10 @@ namespace DistributedKeyValueStore.NET
 
         public Document this[uint key]
         {
-            get => dictionary[key];
+            get
+            {
+                return dictionary[key];
+            }
             set
             {   
                 if(value is null)

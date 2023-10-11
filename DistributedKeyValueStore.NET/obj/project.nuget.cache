@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "Yn4vdcXDbnOpfxaMkdi2wNbOCe5e+ECNojs5uZDl8xOIOfktoythpyfa+a13w9AaWfBjA27ItVVhnKwqbdX5bg==",
+  "dgSpecHash": "nzs6DqXe47m1jXmhHQDkBb6ry8yLbMsgTPNQeWMy06+1tJ3c38hi3+9cb+gVjgdMF3EWkuE4MV0U6Pvw9MHyiA==",
   "success": true,
   "projectFilePath": "C:\\Users\\stefa\\Documents\\GitHub\\DistributedSystems\\DistributedKeyValueStore.NET\\DistributedKeyValueStore.NET.csproj",
   "expectedPackageFiles": [
