@@ -32,6 +32,15 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal abstract class NodeMessage : Message
+    {
+        public uint Id { get; private set; }
+        public NodeMessage(uint id)
+        {
+            Id = id;
+        }
+    }
+
     internal class ReadMessage : KeyMessage
     {
         public ReadMessage(uint Key) : base(Key) { }
@@ -40,6 +49,13 @@ namespace DistributedKeyValueStore.NET
     internal class GetMessage : KeyMessage
     {
         public GetMessage(uint Key) : base(Key) { }
+    }
+
+    internal class GetResponseMessage : KeyValueMessage
+    {
+        public GetResponseMessage(uint Key, string value) : base(Key, value)
+        {
+        }
     }
 
     internal class PreWriteMessage : KeyMessage
@@ -55,5 +71,25 @@ namespace DistributedKeyValueStore.NET
     internal class UpdateMessage : KeyValueMessage
     {
         public UpdateMessage(uint Key, string value) : base(Key, value) { }
+    }
+
+    internal class StartMessage : NodeMessage
+    {
+        public StartMessage(uint id) : base(id)
+        {
+        }
+    }
+
+    internal class AddNodeMessage : NodeMessage
+    {
+        public AddNodeMessage(uint id) : base(id)
+        {
+        }
+    }
+    internal class RemoveNodeMessage : NodeMessage
+    {
+        public RemoveNodeMessage(uint id) : base(id)
+        {
+        }
     }
 }
