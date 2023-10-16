@@ -18,6 +18,7 @@ namespace DistributedKeyValueStore.NET
          public Collection()
         {
             dictionary = new Dictionary<uint, Document>();
+            this.Add(69, new Document("H24 in gaina!"));
         }
 
         //Ritorna il documento inserito
@@ -74,11 +75,13 @@ namespace DistributedKeyValueStore.NET
             return document;
         }
 
-        public Document this[uint key]
+        public Document? this[uint key]
         {
             get
             {
-                return dictionary[key];
+                if (dictionary.ContainsKey(key))
+                    return dictionary[key];
+                return null;
             }
             set
             {   

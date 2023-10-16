@@ -1,4 +1,6 @@
 ﻿using Akka.Actor;
+using MathNet.Numerics.Random;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,6 +17,9 @@ namespace DistributedKeyValueStore.NET
         //Lista degli altri nodi
         SortedSet<uint> nodes = new SortedSet<uint>();
         //Id del nodo
+
+        //Teniamo una convenzione nei log:
+        //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
         public uint Id { get; private set; }
 
         bool debug = true;
@@ -27,14 +32,10 @@ namespace DistributedKeyValueStore.NET
 
         protected override void PreStart()
         {
-            /*
             if (debug)
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Node {Id} started succesfully");
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{Self.Path.Name} started succesfully");
             }
-            */
         }
 
         protected override void PostStop()
@@ -42,22 +43,37 @@ namespace DistributedKeyValueStore.NET
             if (debug)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Node {Id} gone!");
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{Self.Path.Name} is gone!");
+                Console.ResetColor();
             }
         }
+
+        //-------------------------------------------------------------------------------------------------------
+        //MESSAGGI DI SUPPORTO
 
         protected void Start(StartMessage message)
         {
             if (this.Id == uint.MaxValue)
             {
+                //Questo è l'id univoco del nodo
                 this.Id = message.Id;
 
-                if(debug)
+                //Se non sono il primo nodo
+                if (this.Id != message.AskNode)
                 {
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"Node {Id} initialized succesfully");
-                    Console.ForegroundColor = ConsoleColor.White;
+                    //Contatto un altro nodo a caso per recuperare la lista di nodi
+                    ActorSelection receiver = Context.ActorSelection($"/user/node{message.AskNode}");
+
+                    //Domando la lista dei nodi
+                    receiver.Tell(new GetNodeListMessage(this.Id), Self);
+                }
+                else
+                {
+                    //Mi annuncio a tutti gli altri nodi (client) (me stesso compreso)
+                    Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+
+                    if (debug)
+                        Console.WriteLine($"{Self.Path.Name} initialized succesfully");
                 }
             }
             else
@@ -66,20 +82,55 @@ namespace DistributedKeyValueStore.NET
 
         protected void AddNode(AddNodeMessage message)
         {
+            //Un nuovo nodo si presenta
+            //Lo aggiungo alla lista dei nodi
             nodes.Add(message.Id);
             
             if(debug)
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"  Node {Id} added node {message.Id}");
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
             }
+
+            //Devo eliminare tutti gli elementi di cui non sono più responsabile
+            //TODO
         }
 
         protected void RemoveNode(RemoveNodeMessage message)
         {
 
         }
+
+        private void GetNodeList(GetNodeListMessage message)
+        {
+            if (debug)
+            {
+                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST from {Sender.Path.Name}");
+                Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{nodes.Count}]");
+            }
+            //Ritorno (il riferimento) della lista dei nodi 
+            Sender.Tell(new GetNodeListResponseMessage(Id, nodes));
+        }
+
+        private void GetNodeListResponse(GetNodeListResponseMessage message)
+        {
+            //Inizializzo la lista di nodi PER COPIA
+            nodes = new SortedSet<uint>(message.Nodes);
+
+            if (debug)
+            {
+                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{nodes.Count}]");
+                Console.WriteLine($"{Self.Path.Name} initialized succesfully");
+            }
+
+            //Recupero i valori aggiornati
+            //TODO
+
+            //Mi annuncio a tutti gli altri nodi (me stesso compreso)
+            Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+        }
+
+        //-------------------------------------------------------------------------------------------------------
+        //MESSAGGI DI UTILIZZO
 
         protected void OnWrite(WriteMessage message)
         {
@@ -93,19 +144,22 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnGet(GetMessage message)
         {
-            Thread.Sleep(1000);//Da togliere
-            if (debug)
-            {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"    Node {Id} received Get {message.Key} from {Sender.Path}");
-                Console.WriteLine($"    Node {Id} send responce to {Sender.Path}");
-            }
-            //Sender.Tell(new GetResponseMessage(message.Key, "69"), Self);
+            //TEMPORANEO REINDIRIZZO
+            OnRead(new ReadMessage(message.Key));
         }
 
         protected void OnRead(ReadMessage message)
         {
+            //Recupero il valore
+            string? value = data[message.Key]?.Value ?? null;
+            //Invio la risposta
+            Sender.Tell(new ReadResponseMessage(message.Key, value), Self);
 
+            if (debug)
+            {
+                Console.WriteLine($"{Self.Path.Name} received READ from {Sender.Path.Name} => Key:{message.Key}");
+                Console.WriteLine($"{Self.Path.Name} sended READ RESPONSE to {Sender.Path.Name} => Key:{message.Key} Value:{value ?? "null"}");
+            }
         }
 
         protected void OnPreWrite(PreWriteMessage message)
@@ -113,11 +167,14 @@ namespace DistributedKeyValueStore.NET
 
         }
 
+        //-------------------------------------------------------------------------------------------------------
+
         protected override void OnReceive(object msg)
         {
             //if(msg is not null)
             switch (msg) 
             {
+                //MESSAGGI DI SUPPORTO
                 case StartMessage message:
                     Start(message);
                     break;
@@ -127,6 +184,14 @@ namespace DistributedKeyValueStore.NET
                 case RemoveNodeMessage message:
                     RemoveNode(message);
                     break;
+                case GetNodeListMessage message:
+                    GetNodeList(message);
+                    break;
+                case GetNodeListResponseMessage message:
+                    GetNodeListResponse(message);
+                    break;
+
+                //MESSAGGI DI UTILIZZO
                 case ReadMessage message:
                     OnRead(message);
                     break;
@@ -142,8 +207,25 @@ namespace DistributedKeyValueStore.NET
                 case PreWriteMessage message:
                     OnPreWrite(message);
                     break;
+
+                //MESSAGGI DI TESTING
+                case TestMessage message:
+                    Test(message);
+                    break;
                 default:
                     throw new Exception("Not yet implemented!");
+            }
+        }
+        protected void Test(TestMessage message)
+        {
+            if (debug)
+            {
+                Console.WriteLine($"Count nodes: {nodes.Count}");
+                foreach (var foo in nodes)
+                {
+                    Console.Write(foo.ToString() + " ");
+                }
+                Console.WriteLine();
             }
         }
     }

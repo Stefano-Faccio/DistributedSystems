@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Akka" Version="1.5.13" />
+    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
   </ItemGroup>
 
 </Project>

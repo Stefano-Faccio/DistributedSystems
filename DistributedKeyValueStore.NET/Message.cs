@@ -13,9 +13,9 @@ namespace DistributedKeyValueStore.NET
     internal abstract class KeyValueMessage : Message
     {
         public uint Key { get; private set; }
-        public string Value { get; private set; }
+        public string? Value { get; private set; }
 
-        public KeyValueMessage(uint Key, string value)
+        public KeyValueMessage(uint Key, string? value)
         {
             this.Key = Key;
             Value = value;
@@ -45,6 +45,12 @@ namespace DistributedKeyValueStore.NET
     {
         public ReadMessage(uint Key) : base(Key) { }
     }
+    internal class ReadResponseMessage : KeyValueMessage
+    {
+        public ReadResponseMessage(uint Key, string? value) : base(Key, value)
+        {
+        }
+    }
 
     internal class GetMessage : KeyMessage
     {
@@ -53,7 +59,7 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetResponseMessage : KeyValueMessage
     {
-        public GetResponseMessage(uint Key, string value) : base(Key, value)
+        public GetResponseMessage(uint Key, string? value) : base(Key, value)
         {
         }
     }
@@ -65,18 +71,20 @@ namespace DistributedKeyValueStore.NET
 
     internal class WriteMessage : KeyValueMessage
     {
-        public WriteMessage(uint Key, string value) : base(Key, value) { }
+        public WriteMessage(uint Key, string? value) : base(Key, value) { }
     }
 
     internal class UpdateMessage : KeyValueMessage
     {
-        public UpdateMessage(uint Key, string value) : base(Key, value) { }
+        public UpdateMessage(uint Key, string? value) : base(Key, value) { }
     }
 
     internal class StartMessage : NodeMessage
     {
-        public StartMessage(uint id) : base(id)
+        public uint AskNode { get; private set; }
+        public StartMessage(uint id, uint askNode) : base(id)
         {
+            AskNode = askNode;
         }
     }
 
@@ -91,5 +99,26 @@ namespace DistributedKeyValueStore.NET
         public RemoveNodeMessage(uint id) : base(id)
         {
         }
+    }
+
+    internal class GetNodeListMessage : NodeMessage
+    {
+        public GetNodeListMessage(uint id) : base(id)
+        {
+        }
+    }
+
+    internal class GetNodeListResponseMessage : NodeMessage
+    {
+        public SortedSet<uint> Nodes{ get; private set; }
+        public GetNodeListResponseMessage(uint id, SortedSet<uint> nodes) : base(id)
+        {
+            this.Nodes = nodes;
+        }
+    }
+
+    internal class TestMessage : Message
+    {
+        
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using MathNet.Numerics.Random;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,14 +10,15 @@ namespace DistributedKeyValueStore.NET
 {
     internal class Client: UntypedActor
     {
+        //Lista degli altri nodi
+        SortedSet<uint> nodes = new SortedSet<uint>();
+
         bool debug = true;
         protected override void PreStart()
         {
             if (debug)
             {
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"Client Started");
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{Self.Path.Name} started succesfully");
             }
         }
 
@@ -25,35 +27,58 @@ namespace DistributedKeyValueStore.NET
             if (debug)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Client gone!");
-                Console.ForegroundColor = ConsoleColor.White;
+                Console.WriteLine($"{Self.Path.Name} is gone!");
+                Console.ResetColor();
             }
         }
 
+        protected void AddNode(AddNodeMessage message)
+        {
+            nodes.Add(message.Id);
 
+            if (debug)
+            {
+                Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
+            }
+        }
+        protected void RemoveNode(RemoveNodeMessage message)
+        {
+
+        }
 
         protected void DoGetRequest(GetMessage message)
         {
-            Thread.Sleep(1000);
+            //Prendo un nodo a caso
+            MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
-            if(debug)
+            if (debug)
             {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"    Client send Get {message.Key} request to node {Context.ActorSelection("/user/0").Path}");
+                Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length-1]} => Key:{message.Key}");
             }
+
             //Qui la richiesta parte
-            Task testGet = Context.ActorSelection("/user/0").Ask(new GetMessage(5), TimeSpan.FromSeconds(1));
-            //Task.WhenAny(testGet).PipeTo(Context.ActorSelection("/user/0"));
-            //Task.WhenAny(testGet).PipeTo(Context.ActorSelection("/user/0"), Self);
+            receiver.Tell(new GetMessage(message.Key), Self);
         }
 
         protected void OnGetResponse(GetResponseMessage message)
         {
-            Console.WriteLine($"Risposta: Key={message.Key} Value={message.Value}");
             if (debug)
             {
-                Console.ForegroundColor = ConsoleColor.White;
-                Console.WriteLine($"Client recive Get from {Sender.Path}");
+                Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
+            }
+        }
+
+        protected void Test(TestMessage message)
+        {
+            if (debug)
+            {
+                Console.WriteLine($"Count nodes: {nodes.Count}");
+                foreach (var foo in nodes)
+                {
+                    Console.Write(foo.ToString() + " ");
+                }
+                Console.WriteLine();
             }
         }
 
@@ -66,6 +91,18 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case GetMessage message:
                     DoGetRequest(message);
+                    break;
+                case AddNodeMessage message:
+                    AddNode(message);
+                    break;
+                case RemoveNodeMessage message:
+                    RemoveNode(message);
+                    break;
+                case ReadResponseMessage message: //TEMPORANEO REINDIRIZZO
+                    OnGetResponse(new GetResponseMessage(message.Key, message.Value));
+                    break;
+                case TestMessage message:
+                    Test(message);
                     break;
                 default:
                     throw new Exception("Not implemented yet!");
