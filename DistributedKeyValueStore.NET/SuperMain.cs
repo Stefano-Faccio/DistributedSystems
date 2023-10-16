@@ -10,7 +10,7 @@ namespace DistributedKeyValueStore.NET
         //MersenneTwister per i numeri casuali
         static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
         //Numero di attori iniziali
-        const uint NATTORI = 2;
+        const uint NATTORI = 5;
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Blue;

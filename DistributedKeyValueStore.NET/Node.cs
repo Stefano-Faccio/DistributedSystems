@@ -105,7 +105,7 @@ namespace DistributedKeyValueStore.NET
             if (debug)
             {
                 Console.WriteLine($"{Self.Path.Name} received GET NODE LIST from {Sender.Path.Name}");
-                Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{nodes.Count}]");
+                Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
             }
             //Ritorno (il riferimento) della lista dei nodi 
             Sender.Tell(new GetNodeListResponseMessage(Id, nodes));
@@ -118,7 +118,7 @@ namespace DistributedKeyValueStore.NET
 
             if (debug)
             {
-                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{nodes.Count}]");
+                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
                 Console.WriteLine($"{Self.Path.Name} initialized succesfully");
             }
 
