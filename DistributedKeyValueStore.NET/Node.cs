@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using MathNet.Numerics.Distributions;
 using MathNet.Numerics.Random;
 using Newtonsoft.Json.Linq;
 using System;
@@ -24,7 +25,7 @@ namespace DistributedKeyValueStore.NET
         //Teniamo una convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
 
-
+        const int READQUORUM = 2;
         bool debug = true;
 
         public Node()
@@ -153,45 +154,15 @@ namespace DistributedKeyValueStore.NET
             //Genero un numero casuale id della richiesta GET
             int getID = SuperMain.mersenneTwister.Next();
 
+            //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
+            getRequestsData[getID] = new GetDataStructure(message.Key, Sender.Path.Name);
 
-            //Aggiungo il nome del sender alla lista dei nodi che hanno chiesto quella key
-            getRequestsData[message.Key].NodesName.Add(Sender.Path.Name);
+            //Invio messaggi di READ a tutti gli altri nodi
+            foreach (uint node in nodes)
+                Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key, getID));
 
-            //Se la lista contiene solo l'elemento appena aggiunto
-            if (getRequestsData[message.Key].NodesName.Count == 1)
-            {
-                //Invio messaggi di READ a tutti gli altri nodi
-                foreach (uint node in nodes)
-                    Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key));
-
-                if (debug)
-                    Console.WriteLine($"{Self.Path.Name} sended REAT to ALL NODES => Key:{message.Key}");
-            }
-            //Altrimenti significa che c'è una richiesta ancora in corso e non serve fare altre READ
-
-            /*
-            //Lista con i nomi di tutti i nodi che hanno richiesto una get per una data key
-            List<string> getRequestList;
-            //Prendo la lista
-            getList.TryGetValue(message.Key, out Tuple<List<string> , >? pair);
-            if (pair is null)
-            {
-                //Se la key non esiste nel dizionario la aggiungo
-                getRequestList = new List<string>();
-                getList[message.Key] = new Tuple<List<string>,  >(getRequestList);
-            }
-            else
-                getRequestList = pair.Item1;
-
-            //Aggiungo il nome del sender alla lista
-            getRequestList.Add(Sender.Path.Name);
-            //Se la lista contiene solo l'elemento appena aggiunto
-            if (getRequestList.Count == 1) 
-            {
-
-            }
-            */
-            
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} sended REAT to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnRead(ReadMessage message)
@@ -199,7 +170,7 @@ namespace DistributedKeyValueStore.NET
             //Recupero il valore
             string? value = data[message.Key]?.Value ?? null;
             //Invio la risposta
-            Sender.Tell(new ReadResponseMessage(message.Key, value), Self);
+            Sender.Tell(new ReadResponseMessage(message.Key, value, message.GetId), Self);
 
             if (debug)
             {
@@ -210,22 +181,32 @@ namespace DistributedKeyValueStore.NET
         
         private void OnReadResponse(ReadResponseMessage message)
         {
-            //Aggiungo il valore ricevuto ai dati della 
-            getRequestsData[message.Key].NodesResponse.Add(Sender.Path.Name, message.Value);
+            if (message.Value is null)
+                throw new Exception("Read responce contains null value");
 
-            //Se ho abbastanza risposte rispondo alla GET
-            if(getRequestsData[message.Key].NodesResponse > READQUORUM)
+            //Prendo i dati della richiesta GET
+            getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData);
+            if(getRequestData is not null)
             {
-                //Prendo il valore per maggioranza
-                string majorityValue = getRequestsData[message.Key].NodesResponse.GetValue();
+                //Aggiungo il valore ricevuto ai dati della 
+                getRequestData.NodesResponse.Add(message.Value);                   
 
-                //Invio la risposta ai nodi
-                foreach(string nodeName in getRequestsData[message.Key].NodesName)
-                    Context.ActorSelection($"/user/{nodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
+                //Se ho abbastanza risposte rispondo alla GET
+                if (getRequestData.NodesResponse.Count > READQUORUM)
+                {
+                    //Prendo il valore per maggioranza
+                    //TODO
+                    string majorityValue = getRequestData.NodesResponse.GetMajorityValue();
 
-                //Pulisco 
+                    //Invio la risposta al nodo
+                    Context.ActorSelection($"/user/{getRequestData.NodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
 
+                    //Pulisco 
+
+                }
             }
+
+            //Se getRequestData è null posso ignorare la risposta
         }
 
         protected void OnPreWrite(PreWriteMessage message)

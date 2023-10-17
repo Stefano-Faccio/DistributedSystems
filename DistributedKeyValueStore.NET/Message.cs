@@ -43,12 +43,19 @@ namespace DistributedKeyValueStore.NET
 
     internal class ReadMessage : KeyMessage
     {
-        public ReadMessage(uint Key) : base(Key) { }
+        public int GetId {get; private set;}
+        public ReadMessage(uint Key, int readId) : base(Key) 
+        {
+            GetId = readId;
+        }
     }
     internal class ReadResponseMessage : KeyValueMessage
     {
-        public ReadResponseMessage(uint Key, string? value) : base(Key, value)
-        { }
+        public int GetId {get; private set;}
+        public ReadResponseMessage(uint Key, string? value, int readId) : base(Key, value)
+        {
+            GetId = readId;
+        }
     }
 
     internal class GetMessage : KeyMessage
