@@ -53,9 +53,7 @@ namespace DistributedKeyValueStore.NET
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
             if (debug)
-            {
                 Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length-1]} => Key:{message.Key}");
-            }
 
             //Qui la richiesta parte
             receiver.Tell(new GetMessage(message.Key), Self);
@@ -64,9 +62,7 @@ namespace DistributedKeyValueStore.NET
         protected void OnGetResponse(GetResponseMessage message)
         {
             if (debug)
-            {
                 Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
-            }
         }
 
         protected void Test(TestMessage message)
@@ -97,9 +93,6 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case RemoveNodeMessage message:
                     RemoveNode(message);
-                    break;
-                case ReadResponseMessage message: //TEMPORANEO REINDIRIZZO
-                    OnGetResponse(new GetResponseMessage(message.Key, message.Value));
                     break;
                 case TestMessage message:
                     Test(message);

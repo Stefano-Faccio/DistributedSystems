@@ -162,7 +162,7 @@ namespace DistributedKeyValueStore.NET
                 Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key, getID));
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} sended REAT to ALL NODES => Key:{message.Key}");
+                Console.WriteLine($"{Self.Path.Name} sended READ to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnRead(ReadMessage message)
@@ -181,32 +181,37 @@ namespace DistributedKeyValueStore.NET
         
         private void OnReadResponse(ReadResponseMessage message)
         {
-            if (message.Value is null)
-                throw new Exception("Read responce contains null value");
-
             //Prendo i dati della richiesta GET
             getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData);
             if(getRequestData is not null)
             {
-                //Aggiungo il valore ricevuto ai dati della 
-                getRequestData.NodesResponse.Add(message.Value);                   
+                //Aggiungo il valore ricevuto ai dati
+                getRequestData.NodesResponse.Add(message.Value);
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
                 //Se ho abbastanza risposte rispondo alla GET
                 if (getRequestData.NodesResponse.Count > READQUORUM)
                 {
                     //Prendo il valore per maggioranza
-                    //TODO
-                    string majorityValue = getRequestData.NodesResponse.GetMajorityValue();
+                    string? majorityValue = getRequestData.GetMajorityValue();
 
                     //Invio la risposta al nodo
                     Context.ActorSelection($"/user/{getRequestData.NodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
 
-                    //Pulisco 
+                    if (debug)
+                        Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{majorityValue ?? "null"}");
 
+                    //Rimuovo la richiesta GET
+                    getRequestsData.Remove(message.GetId);
                 }
             }
+            else if(debug)
+                Console.WriteLine($"{Self.Path.Name} received READ RESPONSE (IGNORED) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
-            //Se getRequestData è null posso ignorare la risposta
+
+            //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
         }
 
         protected void OnPreWrite(PreWriteMessage message)
