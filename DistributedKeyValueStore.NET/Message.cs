@@ -63,6 +63,17 @@
         public PreWriteMessage(uint Key) : base(Key) { }
     }
 
+    internal class PreWriteResponseMessage : Message
+    {
+        public uint Key { get; private set; }
+        public bool Result { get; private set; }
+        public PreWriteResponseMessage(uint key, bool result)
+        {
+            this.Key = key;
+            this.Result = result;
+        }
+    }
+
     internal class WriteMessage : KeyValueMessage
     {
         public uint Version { get; private set; }

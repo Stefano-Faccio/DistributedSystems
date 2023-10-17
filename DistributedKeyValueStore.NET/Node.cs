@@ -161,6 +161,30 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnPreWrite(PreWriteMessage message)
         {
+            var Key = message.Key;
+            var doc = data[Key];
+            if (doc == null)
+            {
+                // Non abbiamo il valore salvato, quindi per noi va bene aggiungerlo
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true), Self);
+                return;
+            }
+            bool preWriteBlock = doc.GetPreWriteBlock();
+            if (preWriteBlock)
+            {
+                // Siamo gia' in prewrite per questa chiave, quindi diciamo che non possiamo aggiornare
+                Sender.Tell(new PreWriteResponseMessage(message.Key, false), Self);
+            }
+            else
+            {
+                doc.SetPreWriteBlock();
+                // Va bene aggiornare il valore per noi
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true), Self);
+            }
+        }
+
+        protected void OnPreWriteResponse(PreWriteResponseMessage message)
+        {
 
         }
 
@@ -204,6 +228,9 @@ namespace DistributedKeyValueStore.NET
                 case PreWriteMessage message:
                     OnPreWrite(message);
                     break;
+                case PreWriteResponseMessage message:
+                    OnPreWriteResponse(message);
+                    return;
 
                 //MESSAGGI DI TESTING
                 case TestMessage message:
