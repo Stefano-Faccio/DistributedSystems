@@ -8,7 +8,7 @@ namespace DistributedKeyValueStore.NET
     internal class SuperMain
     {
         //MersenneTwister per i numeri casuali
-        static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+        public static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
         //Numero di attori iniziali
         const uint NATTORI = 5;
         static void Main(string[] args)

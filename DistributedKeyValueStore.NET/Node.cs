@@ -17,10 +17,13 @@ namespace DistributedKeyValueStore.NET
         //Lista degli altri nodi
         SortedSet<uint> nodes = new SortedSet<uint>();
         //Id del nodo
+        public uint Id { get; private set; }
+        //Hashset per le richieste get
+        Dictionary<int, GetDataStructure> getRequestsData = new Dictionary<int, GetDataStructure>();
 
         //Teniamo una convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
-        public uint Id { get; private set; }
+
 
         bool debug = true;
 
@@ -144,8 +147,51 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnGet(GetMessage message)
         {
-            //TEMPORANEO REINDIRIZZO
-            OnRead(new ReadMessage(message.Key));
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} received GET from {Sender.Path.Name} => Key:{message.Key}");
+
+            //Genero un numero casuale id della richiesta GET
+            int getID = SuperMain.mersenneTwister.Next();
+
+
+            //Aggiungo il nome del sender alla lista dei nodi che hanno chiesto quella key
+            getRequestsData[message.Key].NodesName.Add(Sender.Path.Name);
+
+            //Se la lista contiene solo l'elemento appena aggiunto
+            if (getRequestsData[message.Key].NodesName.Count == 1)
+            {
+                //Invio messaggi di READ a tutti gli altri nodi
+                foreach (uint node in nodes)
+                    Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key));
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} sended REAT to ALL NODES => Key:{message.Key}");
+            }
+            //Altrimenti significa che c'è una richiesta ancora in corso e non serve fare altre READ
+
+            /*
+            //Lista con i nomi di tutti i nodi che hanno richiesto una get per una data key
+            List<string> getRequestList;
+            //Prendo la lista
+            getList.TryGetValue(message.Key, out Tuple<List<string> , >? pair);
+            if (pair is null)
+            {
+                //Se la key non esiste nel dizionario la aggiungo
+                getRequestList = new List<string>();
+                getList[message.Key] = new Tuple<List<string>,  >(getRequestList);
+            }
+            else
+                getRequestList = pair.Item1;
+
+            //Aggiungo il nome del sender alla lista
+            getRequestList.Add(Sender.Path.Name);
+            //Se la lista contiene solo l'elemento appena aggiunto
+            if (getRequestList.Count == 1) 
+            {
+
+            }
+            */
+            
         }
 
         protected void OnRead(ReadMessage message)
@@ -159,6 +205,26 @@ namespace DistributedKeyValueStore.NET
             {
                 Console.WriteLine($"{Self.Path.Name} received READ from {Sender.Path.Name} => Key:{message.Key}");
                 Console.WriteLine($"{Self.Path.Name} sended READ RESPONSE to {Sender.Path.Name} => Key:{message.Key} Value:{value ?? "null"}");
+            }
+        }
+        
+        private void OnReadResponse(ReadResponseMessage message)
+        {
+            //Aggiungo il valore ricevuto ai dati della 
+            getRequestsData[message.Key].NodesResponse.Add(Sender.Path.Name, message.Value);
+
+            //Se ho abbastanza risposte rispondo alla GET
+            if(getRequestsData[message.Key].NodesResponse > READQUORUM)
+            {
+                //Prendo il valore per maggioranza
+                string majorityValue = getRequestsData[message.Key].NodesResponse.GetValue();
+
+                //Invio la risposta ai nodi
+                foreach(string nodeName in getRequestsData[message.Key].NodesName)
+                    Context.ActorSelection($"/user/{nodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
+
+                //Pulisco 
+
             }
         }
 
@@ -195,6 +261,9 @@ namespace DistributedKeyValueStore.NET
                 case ReadMessage message:
                     OnRead(message);
                     break;
+                case ReadResponseMessage message:
+                    OnReadResponse(message);
+                    break;
                 case UpdateMessage message:
                     OnUpdate(message);
                     break;
@@ -216,6 +285,7 @@ namespace DistributedKeyValueStore.NET
                     throw new Exception("Not yet implemented!");
             }
         }
+
         protected void Test(TestMessage message)
         {
             if (debug)

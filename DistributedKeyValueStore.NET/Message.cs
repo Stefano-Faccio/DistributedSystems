@@ -48,8 +48,7 @@ namespace DistributedKeyValueStore.NET
     internal class ReadResponseMessage : KeyValueMessage
     {
         public ReadResponseMessage(uint Key, string? value) : base(Key, value)
-        {
-        }
+        { }
     }
 
     internal class GetMessage : KeyMessage
@@ -60,8 +59,7 @@ namespace DistributedKeyValueStore.NET
     internal class GetResponseMessage : KeyValueMessage
     {
         public GetResponseMessage(uint Key, string? value) : base(Key, value)
-        {
-        }
+        { }
     }
 
     internal class PreWriteMessage : KeyMessage
