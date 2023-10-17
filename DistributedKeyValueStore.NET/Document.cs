@@ -1,13 +1,4 @@
-﻿
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DistributedKeyValueStore.NET
+﻿namespace DistributedKeyValueStore.NET
 {
     internal class Document : IEquatable<Document?>
     {
@@ -33,6 +24,8 @@ namespace DistributedKeyValueStore.NET
         {
             this.preWriteBlock = preWriteBlock;
         }
+
+        public bool GetPreWriteBlock() { return this.preWriteBlock; }
 
         public void ClearPreWriteBlock() { this.preWriteBlock = false; }
 
@@ -130,7 +123,7 @@ namespace DistributedKeyValueStore.NET
 
             Console.WriteLine("foo1.Equals(foo2): " + foo1.Equals(foo2));
             Console.WriteLine("foo2.Equals(foo1): " + foo2.Equals(foo1));
-            Console.WriteLine($"foo1 == foo2: { foo1 == foo2}");
+            Console.WriteLine($"foo1 == foo2: {foo1 == foo2}");
             Console.WriteLine($"foo1 != foo2: {foo1 != foo2}");
 
             Console.WriteLine("foo1 Hashcode: " + foo1.GetHashCode());
