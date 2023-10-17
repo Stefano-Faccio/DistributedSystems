@@ -1,13 +1,5 @@
 ﻿using Akka.Actor;
-using MathNet.Numerics.Distributions;
-using MathNet.Numerics.Random;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -25,7 +17,6 @@ namespace DistributedKeyValueStore.NET
         //Teniamo una convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
 
-        const int READQUORUM = 2;
         bool debug = true;
 
         public Node()
@@ -50,6 +41,39 @@ namespace DistributedKeyValueStore.NET
                 Console.WriteLine($"{Self.Path.Name} is gone!");
                 Console.ResetColor();
             }
+        }
+
+        private List<uint> FindNodesThatKeepKey(uint key)
+        {
+            //Converto l'albero autobilanciante in una lista ordinata
+            List<uint> sortedList = nodes.ToList();
+            //Prendo l'id dell'elemento più grande
+            uint maxId = sortedList[sortedList.Count - 1];
+            //Creo la lista dei nodi da ritornare
+            List<uint> returnList = new List<uint>(N);
+            //Rappresenta il numero di nodi che devono ancora essere inseriti nella lista di ritorno
+            int nodesToFind = N;
+
+            if (sortedList.Count < N)
+                throw new Exception("There are less Nodes active than N");
+
+            for (int i = 0; i < sortedList.Count && nodesToFind > 0; i++)
+            {
+                if (sortedList[i] >= key)
+                {
+                    returnList.Add(sortedList[i]);
+                    nodesToFind--;
+                }
+            }
+            //Riparto dall'inizio dell'anello
+            key = 0;
+            for (int i = 0; i < sortedList.Count && nodesToFind > 0; i++)
+            {
+                returnList.Add(sortedList[i]);
+                nodesToFind--;
+            }
+
+            return returnList;
         }
 
         //-------------------------------------------------------------------------------------------------------
@@ -157,8 +181,10 @@ namespace DistributedKeyValueStore.NET
             //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
             getRequestsData[getID] = new GetDataStructure(message.Key, Sender.Path.Name);
 
-            //Invio messaggi di READ a tutti gli altri nodi
-            foreach (uint node in nodes)
+            //Recupero i nodi che tengono quel valore
+            List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
+            //Invio messaggi di READ a tutti gli altri nodi che hanno il valore
+            foreach (uint node in nodesWithValue)
                 Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key, getID));
 
             if (debug)
@@ -192,7 +218,7 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
                 //Se ho abbastanza risposte rispondo alla GET
-                if (getRequestData.NodesResponse.Count > READQUORUM)
+                if (getRequestData.NodesResponse.Count > READ_QUORUM)
                 {
                     //Prendo il valore per maggioranza
                     string? majorityValue = getRequestData.GetMajorityValue();
