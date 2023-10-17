@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DistributedKeyValueStore.NET
+﻿namespace DistributedKeyValueStore.NET
 {
     internal abstract class Message
     {
@@ -71,7 +65,11 @@ namespace DistributedKeyValueStore.NET
 
     internal class WriteMessage : KeyValueMessage
     {
-        public WriteMessage(uint Key, string? value) : base(Key, value) { }
+        public uint Version { get; private set; }
+        public WriteMessage(uint Key, string? value, uint version) : base(Key, value)
+        {
+            this.Version = version;
+        }
     }
 
     internal class UpdateMessage : KeyValueMessage
@@ -110,7 +108,7 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetNodeListResponseMessage : NodeMessage
     {
-        public SortedSet<uint> Nodes{ get; private set; }
+        public SortedSet<uint> Nodes { get; private set; }
         public GetNodeListResponseMessage(uint id, SortedSet<uint> nodes) : base(id)
         {
             this.Nodes = nodes;
@@ -119,6 +117,6 @@ namespace DistributedKeyValueStore.NET
 
     internal class TestMessage : Message
     {
-        
+
     }
 }

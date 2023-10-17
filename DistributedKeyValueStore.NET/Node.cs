@@ -1,12 +1,4 @@
 ﻿using Akka.Actor;
-using MathNet.Numerics.Random;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -85,8 +77,8 @@ namespace DistributedKeyValueStore.NET
             //Un nuovo nodo si presenta
             //Lo aggiungo alla lista dei nodi
             nodes.Add(message.Id);
-            
-            if(debug)
+
+            if (debug)
             {
                 Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
             }
@@ -134,7 +126,12 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnWrite(WriteMessage message)
         {
-
+            // Write e' forzata
+            var Key = message.Key;
+            var Value = message.Value;
+            var Version = message.Version;
+            if (Value == null) return;
+            data.Add(Key, Value, Version);
         }
 
         protected void OnUpdate(UpdateMessage message)
@@ -172,7 +169,7 @@ namespace DistributedKeyValueStore.NET
         protected override void OnReceive(object msg)
         {
             //if(msg is not null)
-            switch (msg) 
+            switch (msg)
             {
                 //MESSAGGI DI SUPPORTO
                 case StartMessage message:
