@@ -157,7 +157,7 @@ namespace DistributedKeyValueStore.NET
                 Console.WriteLine($"{Self.Path.Name} initialized succesfully");
             }
 
-            //Recupero i valori aggiornati
+            //Mando un messaggio al prossimo nodo per prendere tutte le key che tiene
             //TODO
 
             //Mi annuncio a tutti gli altri nodi (me stesso compreso)
