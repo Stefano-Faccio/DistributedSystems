@@ -15,7 +15,7 @@ namespace DistributedKeyValueStore.NET
     {
         private Dictionary<uint, Document> dictionary;
 
-         public Collection()
+        public Collection()
         {
             dictionary = new Dictionary<uint, Document>();
             this.Add(69, new Document("H24 in gaina!"));

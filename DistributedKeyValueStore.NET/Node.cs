@@ -226,17 +226,16 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnRead(ReadMessage message)
         {
-            //Recupero il valore
-            string? value = data[message.Key]?.Value ?? null;
-            //Invio la risposta
-            Sender.Tell(new ReadResponseMessage(message.Key, value, message.GetId), Self);
+            Document? fetchedData = data[message.Key];
+            ReadResponseMessage responseMessage;
+            //Se non ho l'oggetto della chiave, ritorno null
+            if (fetchedData is not null)
+                responseMessage = new(message.Key, fetchedData.Value, message.GetId, fetchedData.Version, fetchedData.PreWriteBlock);
+            else
+                responseMessage = new(message.Key, fetchedData?.Value, message.GetId);
 
-            if (debug)
-            {
-                ;
-                //Console.WriteLine($"{Self.Path.Name} received READ from {Sender.Path.Name} => Key:{message.Key}");
-                //Console.WriteLine($"{Self.Path.Name} sended READ RESPONSE to {Sender.Path.Name} => Key:{message.Key} Value:{value ?? "null"}");
-            }
+            //Invio la risposta
+            Sender.Tell(responseMessage, Self);
         }
         
         private void OnReadResponse(ReadResponseMessage message)
@@ -245,23 +244,26 @@ namespace DistributedKeyValueStore.NET
             if(getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData))
             {
                 //Aggiungo il valore ricevuto ai dati
-                getRequestData.NodesResponse.Add(message.Value);
+                getRequestData.Add(message.Value, message.Version, message.PreWriteBlock);
 
                 if (debug)
-                    Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
+                    Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Version: {message.Version} PreWriteBlock: {message.PreWriteBlock}");
 
-                //Se ho abbastanza risposte rispondo alla GET
-                // e risco ad eliminare i dati della richiesta GET (i.e. potrebbe essere che il timeout sia partito nel frattempo)
-                if (getRequestData.NodesResponse.Count >= READ_QUORUM && getRequestsData.TryRemove(message.GetId, out GetDataStructure? getRequestDataRemoved))
+                //Cerco di prendere il valore da restituire alla GET
+                string? returnValue = getRequestData.GetReturnValue();
+
+                //GetReturnValue ritorna il valore più recente se ho abbastanza risposte i.e. >= READ_QUORUM
+                //oppure torna null nel caso in cui:
+                //- c'è una write in corso di cui non ho (ancora) il valore
+                //- non ho risposte >= READ_QUORUM
+                //Bisogna vedere se risco ad eliminare i dati della richiesta GET (i.e. potrebbe essere che il timeout sia partito nel frattempo)
+                if (returnValue is not null && getRequestsData.TryRemove(message.GetId, out GetDataStructure? getRequestDataRemoved))
                 {
-                    //Prendo il valore per maggioranza
-                    string? majorityValue = getRequestDataRemoved.GetMajorityValue();
-
                     //Invio la risposta al nodo
-                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
+                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, returnValue));
 
                     if (debug)
-                        Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{majorityValue ?? "null"}");
+                        Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
                 }
             }
             else if(debug)

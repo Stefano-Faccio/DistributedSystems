@@ -52,10 +52,17 @@ namespace DistributedKeyValueStore.NET
     internal class ReadResponseMessage : KeyValueMessage
     {
         public int GetId {get; private set;}
-        public ReadResponseMessage(uint Key, string? value, int readId) : base(Key, value)
+        public bool PreWriteBlock { get; private set; }
+        public uint Version { get; private set; }
+        public ReadResponseMessage(uint key, string? value, int getId, uint version, bool preWriteBlock) : base(key, value)
         {
-            GetId = readId;
+            GetId = getId;
+            Version = version;
+            PreWriteBlock = preWriteBlock;
         }
+
+        public ReadResponseMessage(uint key, string? value, int getId) : this(key, value, getId, 0, false)
+        { }
     }
 
     internal class GetMessage : KeyMessage
