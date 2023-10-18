@@ -1,4 +1,8 @@
 ﻿using Akka.Actor;
+using Newtonsoft.Json.Linq;
+using System.Collections.Concurrent;
+using System.Threading;
+using System.Timers;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -6,18 +10,21 @@ namespace DistributedKeyValueStore.NET
     internal class Node : UntypedActor
     {
         //Datatabase dei dati chiave valore del nodo
-        Collection data = new Collection();
+        readonly Collection data = new();
         //Lista degli altri nodi
-        SortedSet<uint> nodes = new SortedSet<uint>();
+        SortedSet<uint> nodes = new();
         //Id del nodo
         public uint Id { get; private set; }
-        //Hashset per le richieste get
-        Dictionary<int, GetDataStructure> getRequestsData = new Dictionary<int, GetDataStructure>();
+        //Hashset thread-safe per le richieste get
+        readonly ConcurrentDictionary<int, GetDataStructure> getRequestsData = new();
+        /* N.B. Tutti i metodi pubblici e protetti sono thread-safe tranne quelli implementati tramite interfaccia
+         * https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2?view=net-7.0
+         */
 
         //Teniamo una convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
 
-        bool debug = true;
+        readonly bool debug = true;
 
         public Node()
         {
@@ -179,10 +186,36 @@ namespace DistributedKeyValueStore.NET
             int getID = SuperMain.mersenneTwister.Next();
 
             //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
-            getRequestsData[getID] = new GetDataStructure(message.Key, Sender.Path.Name);
+            if (!getRequestsData.TryAdd(getID, new GetDataStructure(message.Key, Sender.Path.Name)))
+                throw new Exception("Errors adding item to getRequestsData Dictionary");
+
+            //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
+            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
+            //La variabile Sender e Self non sono presenti nel contesto del Timer quindi salvo i riferimenti
+            IActorRef SenderRef = Sender;
+            IActorRef SelfRef = Self;
+            //Funzione di callback
+            timoutTimer.Elapsed += (source, e) => {
+                //Rimuovo i dati della richiesta GET se esistono
+                if (getRequestsData.TryRemove(getID, out GetDataStructure? getRequestData))
+                {
+                    //Se i dati della richiesta GET ci sono ancora significa che non è stata soddisfatta quindi invio un timeout al client
+                    //Invio la risposta di timeout
+                    SenderRef.Tell(new GetResponseMessage(message.Key, true), SelfRef);
+
+                    if (debug)
+                        Console.WriteLine($"{SelfRef.Path.Name} sended GET RESPONSE (TIMEOUT) to {SenderRef.Path.Name} => Key:{message.Key}");
+                }
+                else if (debug)
+                    Console.WriteLine($"{SelfRef.Path.Name} TIMEOUT not achieved => Key:{message.Key}");
+                //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
+            };
+            timoutTimer.AutoReset = false;
+            timoutTimer.Enabled = true;
 
             //Recupero i nodi che tengono quel valore
             List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
+
             //Invio messaggi di READ a tutti gli altri nodi che hanno il valore
             foreach (uint node in nodesWithValue)
                 Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key, getID));
@@ -200,16 +233,16 @@ namespace DistributedKeyValueStore.NET
 
             if (debug)
             {
-                Console.WriteLine($"{Self.Path.Name} received READ from {Sender.Path.Name} => Key:{message.Key}");
-                Console.WriteLine($"{Self.Path.Name} sended READ RESPONSE to {Sender.Path.Name} => Key:{message.Key} Value:{value ?? "null"}");
+                ;
+                //Console.WriteLine($"{Self.Path.Name} received READ from {Sender.Path.Name} => Key:{message.Key}");
+                //Console.WriteLine($"{Self.Path.Name} sended READ RESPONSE to {Sender.Path.Name} => Key:{message.Key} Value:{value ?? "null"}");
             }
         }
         
         private void OnReadResponse(ReadResponseMessage message)
         {
-            //Prendo i dati della richiesta GET
-            getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData);
-            if(getRequestData is not null)
+            //Prendo i dati della richiesta GET se esistono
+            if(getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData))
             {
                 //Aggiungo il valore ricevuto ai dati
                 getRequestData.NodesResponse.Add(message.Value);
@@ -218,19 +251,17 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
                 //Se ho abbastanza risposte rispondo alla GET
-                if (getRequestData.NodesResponse.Count > READ_QUORUM)
+                // e risco ad eliminare i dati della richiesta GET (i.e. potrebbe essere che il timeout sia partito nel frattempo)
+                if (getRequestData.NodesResponse.Count >= READ_QUORUM && getRequestsData.TryRemove(message.GetId, out GetDataStructure? getRequestDataRemoved))
                 {
                     //Prendo il valore per maggioranza
-                    string? majorityValue = getRequestData.GetMajorityValue();
+                    string? majorityValue = getRequestDataRemoved.GetMajorityValue();
 
                     //Invio la risposta al nodo
-                    Context.ActorSelection($"/user/{getRequestData.NodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
+                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, majorityValue));
 
                     if (debug)
                         Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{majorityValue ?? "null"}");
-
-                    //Rimuovo la richiesta GET
-                    getRequestsData.Remove(message.GetId);
                 }
             }
             else if(debug)

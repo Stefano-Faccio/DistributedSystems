@@ -65,8 +65,16 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetResponseMessage : KeyValueMessage
     {
+        public bool Timeout { get; private set; }
         public GetResponseMessage(uint Key, string? value) : base(Key, value)
-        { }
+        {
+            Timeout = false;
+        }
+
+        public GetResponseMessage(uint Key, bool timeout) : base(Key, null)
+        { 
+            Timeout = timeout;
+        }
     }
 
     internal class PreWriteMessage : KeyMessage

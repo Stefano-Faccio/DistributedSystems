@@ -19,6 +19,11 @@ namespace DistributedKeyValueStore.NET
             NodesResponse = new List<string?>();
         }
 
+        public override string? ToString()
+        {
+            return $"NodeName: {NodeName} Key:{Key} NodesResponse: [{string.Join(",", NodesResponse)}]";
+        }
+
         public string GetMajorityValue()
         {
             //Sintassi interessante...

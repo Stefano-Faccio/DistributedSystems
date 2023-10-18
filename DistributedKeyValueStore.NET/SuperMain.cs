@@ -27,7 +27,7 @@ namespace DistributedKeyValueStore.NET
 
             for ( uint i = 0; i < NATTORI; i++)
             {
-                //Thread.Sleep(100);
+                Thread.Sleep(100);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
                 int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
@@ -44,12 +44,12 @@ namespace DistributedKeyValueStore.NET
             Console.ResetColor();
 
             client.Tell(new GetMessage(69));
-            client.Tell(new GetMessage(6));
+            //client.Tell(new GetMessage(6));
 
             //-----------------------------------------------------------------------------------------
 
-
             //Test
+            /*
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("\nStart Test:");
@@ -62,6 +62,7 @@ namespace DistributedKeyValueStore.NET
             }
             Console.WriteLine(client.Path);
             client.Tell(new TestMessage());
+            */
 
             Console.ReadKey();
         }

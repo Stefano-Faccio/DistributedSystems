@@ -62,7 +62,7 @@ namespace DistributedKeyValueStore.NET
         protected void OnGetResponse(GetResponseMessage message)
         {
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
+                Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Timeout:{message.Timeout}");
         }
 
         protected void Test(TestMessage message)
