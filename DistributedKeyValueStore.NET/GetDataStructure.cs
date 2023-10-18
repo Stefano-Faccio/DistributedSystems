@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -32,8 +33,48 @@ namespace DistributedKeyValueStore.NET
 
         public string? GetReturnValue()
         {
+            string? response = null;
+
+            //Se ho almeno read_quorum risposte
+            if(Values.Count >= READ_QUORUM)
+            {
+                //Indice del valore più recente
+                int mostRecent = 0;
+                //Indica se c'è qualche elemento tra i più recenti in preWrite
+                bool mostRecentPreWrite = false;
+                //Indica il numero di risposte non null (quindi valide)
+                uint validValues = 0;
+
+                //Cerco il valore più recente e se è in preWrite
+                for (int i = 0; i < Values.Count; i++)
+                {
+                    if (Values[i] is not null)
+                    {
+                        //Aggiorno il contatore delle risposte valide
+                        validValues++;
+
+                        //Se trovo una versione più recente aggiorno
+                        if (Versions[i] > Versions[mostRecent])
+                        {
+                            mostRecent = i;
+                            //Pulisco il preWrite block
+                            mostRecentPreWrite = PreWriteBlocks[mostRecent];
+                        }
+                        else if (Versions[mostRecent] == Versions[i])//Se trovo una versione ugualmente recente aggiorno il PreWrite
+                        {
+                            mostRecentPreWrite |= PreWriteBlocks[i];
+                        }
+                    }
+                }
+
+                //Se l'elemento più recente non è in preWrite e ho raggiunto il read quorum 
+                //allora è safe restituire il valore più recente
+                if (!mostRecentPreWrite && validValues >= READ_QUORUM) 
+                    response = Values[mostRecent];
+            }
+            
             //getRequestData.Values.Count >= READ_QUORUM
-            return null;
+            return response;
         }
 
         public override string? ToString()
