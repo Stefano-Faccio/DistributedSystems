@@ -2,27 +2,25 @@
 {
     internal class Document : IEquatable<Document?>
     {
-        private uint version;
-        private string value;
-        private bool preWriteBlock;
-        public string Value => value;
-        public uint Version => version;
+        public string Value { get; private set; }
+        public bool PreWriteBlock { get; private set; }
+        public uint Version { get; private set; }
 
         public Document(string value)
         {
-            this.value = value ?? throw new ArgumentNullException(nameof(value));
-            this.version = 0;
-            this.preWriteBlock = false;
+            Value = value ?? throw new ArgumentNullException(nameof(value));
+            Version = 0;
+            PreWriteBlock = false;
         }
 
         public Document(string value, uint version) : this(value)
         {
-            this.version = version;
+            Version = version;
         }
 
         public Document(string value, uint version, bool preWriteBlock) : this(value, version)
         {
-            this.preWriteBlock = preWriteBlock;
+            PreWriteBlock = preWriteBlock;
         }
 
         public bool GetPreWriteBlock() { return this.preWriteBlock; }
@@ -33,26 +31,26 @@
 
         public Document Update(string value, uint version)
         {
-            if (version <= this.version)
-                throw new Exception("It is not possible to update a value with a less recent one");
+            if (version <= Version)
+                throw new Exception("It is not possible to update a Value with a less recent one");
 
-            this.value = value;
-            this.version = version;
+            Value = value;
+            Version = version;
 
             //Pulisco il pre-write block poichè la write è avvenuta con successo
-            this.ClearPreWriteBlock();
+            ClearPreWriteBlock();
 
             return this;
         }
 
         public Document Update(string value)
         {
-            return Update(value, this.version + 1);
+            return Update(value, Version + 1);
         }
 
         public override string? ToString()
         {
-            return $"[Value:{this.Value}, Version:{this.version}, PreWriteBlock:{this.preWriteBlock}]";
+            return $"[Value:{Value}, Version:{Version}, PreWriteBlock:{PreWriteBlock}]";
         }
 
         public override bool Equals(object? obj)
@@ -63,9 +61,9 @@
         public bool Equals(Document? other)
         {
             return other is not null &&
-                   version == other.version &&
-                   value == other.value &&
-                   preWriteBlock == other.preWriteBlock;
+                   Version == other.Version &&
+                   Value == other.Value &&
+                   PreWriteBlock == other.PreWriteBlock;
         }
 
         public static bool operator ==(Document? left, Document? right)
@@ -80,13 +78,13 @@
         }
         public override int GetHashCode()
         {
-            return HashCode.Combine(version, value, preWriteBlock);
+            return HashCode.Combine(Version, Value, PreWriteBlock);
         }
 
         public static void Main(string[] args)
         {
-            Document foo1 = new Document("Ciao");
-            Document foo2 = new Document("Bella", 5);
+            Document foo1 = new("Ciao");
+            Document foo2 = new("Bella", 5);
             Console.WriteLine(foo1);
             Console.WriteLine(foo2);
 
