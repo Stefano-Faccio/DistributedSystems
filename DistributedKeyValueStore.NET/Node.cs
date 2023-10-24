@@ -173,21 +173,7 @@ namespace DistributedKeyValueStore.NET
             var Key = message.Key;
             var Value = message.Value;
             var Version = message.Version;
-<<<<<<< HEAD
             if (Value == null) return;
-=======
-            if (Value is null) 
-                return;
-
-            if (Version == 0)
-            {
-                var doc = data[Key];
-                if (doc is not null)
-                    Version = doc.Version + 1;
-                else
-                    Version = 1;
-            }
->>>>>>> ab19cbacc5e9dc0f92cb7f3cf97661a747a415ff
             data.Add(Key, Value, Version, false);
         }
 
@@ -213,14 +199,7 @@ namespace DistributedKeyValueStore.NET
                 //Rimuovo i dati della richiesta UPDATE se esistono
                 if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
                 {
-<<<<<<< HEAD
                     int count = updateRequestDataForKey.Count;
-=======
-                    int count = 0;
-                    foreach (bool res in updateRequestDataForKey)
-                        if (res) 
-                            count++;
->>>>>>> ab19cbacc5e9dc0f92cb7f3cf97661a747a415ff
                     if (count >= WRITE_QUORUM)
                     {
                         // manda WRITE message a tutti
