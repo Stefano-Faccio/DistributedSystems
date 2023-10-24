@@ -53,8 +53,6 @@ namespace DistributedKeyValueStore.NET
         {
             //Converto l'albero autobilanciante in una lista ordinata
             List<uint> sortedList = nodes.ToList();
-            //Prendo l'id dell'elemento più grande
-            uint maxId = sortedList[sortedList.Count - 1];
             //Creo la lista dei nodi da ritornare
             List<uint> returnList = new List<uint>(N);
             //Rappresenta il numero di nodi che devono ancora essere inseriti nella lista di ritorno
@@ -72,13 +70,11 @@ namespace DistributedKeyValueStore.NET
                 }
             }
             //Riparto dall'inizio dell'anello
-            key = 0;
             for (int i = 0; i < sortedList.Count && nodesToFind > 0; i++)
             {
                 returnList.Add(sortedList[i]);
                 nodesToFind--;
             }
-
             return returnList;
         }
 
@@ -168,13 +164,12 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnWrite(WriteMessage message)
         {
-            Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
-            // Write e' forzata
-            var Key = message.Key;
-            var Value = message.Value;
-            var Version = message.Version;
-            if (Value == null) return;
-            data.Add(Key, Value, Version, false);
+            if(debug)
+                Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
+
+            //La Write è forzata
+            if (message.Value is not null)
+                data.Add(message.Key, message.Value, message.Version, false);
         }
 
         protected void OnUpdate(UpdateMessage message)
@@ -191,11 +186,12 @@ namespace DistributedKeyValueStore.NET
             //La variabile Sender e Self non sono presenti nel contesto del Timer quindi salvo i riferimenti
             IActorRef SenderRef = Sender;
             IActorRef SelfRef = Self;
-            var ContextRef = Context;
+            IUntypedActorContext ContextRef = Context;
             //Funzione di callback
             timoutTimer.Elapsed += (source, e) =>
             {
-                Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
+                if (debug)
+                    Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
                 //Rimuovo i dati della richiesta UPDATE se esistono
                 if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
                 {
@@ -328,56 +324,53 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnPreWrite(PreWriteMessage message)
         {
-            // todo aggiungere timeout per resettare prewriteblock, attualmente resettato solo al write
-            var Key = message.Key;
-            var doc = data[Key];
+            Document? doc = data[message.Key];
             if (doc is null)
             {
                 // Non abbiamo il valore salvato, quindi per noi va bene aggiungerlo
                 Sender.Tell(new PreWriteResponseMessage(message.Key, true, 0), Self);
-                return;
-            }
-            bool preWriteBlock = doc.GetPreWriteBlock();
-            if (preWriteBlock)
-            {
-                // Siamo gia' in prewrite per questa chiave, quindi diciamo che non possiamo aggiornare
-                Sender.Tell(new PreWriteResponseMessage(message.Key, false, 0), Self);
             }
             else
             {
-                doc.SetPreWriteBlock();
-                // Va bene aggiornare il valore per noi
-                Sender.Tell(new PreWriteResponseMessage(message.Key, true, doc.Version), Self);
+                bool preWriteBlock = doc.GetPreWriteBlock();
+                if (preWriteBlock)
+                {
+                    // Siamo gia' in prewrite per questa chiave, quindi diciamo che non possiamo aggiornare
+                    Sender.Tell(new PreWriteResponseMessage(message.Key, false, 0), Self);
+                }
+                else
+                {
+                    //Il Timeout per resettare prewriteblock è settato con questa funzione
+                    doc.SetPreWriteBlock();
+                    // Va bene aggiornare il valore per noi
+                    Sender.Tell(new PreWriteResponseMessage(message.Key, true, doc.Version), Self);
+                }
             }
         }
 
         protected void OnPreWriteResponse(PreWriteResponseMessage message)
         {
-            // non abbiamo ricevuto una risposta positiva
-            if (!message.Result) return;
-            if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateRequestDataForKey))
+            //Se abbiamo ricevuto una risposta positiva
+            if (message.Result)
             {
-                //Aggiungo il result ricevuto ai dati
-                updateRequestDataForKey.Add(message.Version);
-
-                if (debug)
-                    Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
-            }
-            else
-            {
-                // inizializzo l'array per collezionare i dati
-
-                var newList = new List<uint>
+                if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateRequestDataForKey))
                 {
-                    message.Version
-                };
+                    //Aggiungo il result ricevuto ai dati
+                    updateRequestDataForKey.Add(message.Version);
 
-                updateRequestsData.TryAdd(message.Key, newList);
+                    if (debug)
+                        Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+                }
+                else
+                {
+                    // inizializzo l'array per collezionare i dati
+                    List<uint> newList = new() { message.Version };
+                    updateRequestsData.TryAdd(message.Key, newList);
 
-                if (debug)
-                    Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+                    if (debug)
+                        Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+                }
             }
-
         }
 
         //-------------------------------------------------------------------------------------------------------
