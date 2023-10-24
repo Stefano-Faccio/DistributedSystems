@@ -1,7 +1,5 @@
 ﻿using Akka.Actor;
-using Akka.Actor.Dsl;
 using MathNet.Numerics.Random;
-using System.Xml.Linq;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -25,13 +23,13 @@ namespace DistributedKeyValueStore.NET
             //Lista attori
             List<IActorRef> attori = new List<IActorRef>((int)NATTORI);
 
-            for ( uint i = 0; i < NATTORI; i++)
+            for (uint i = 0; i < NATTORI; i++)
             {
                 Thread.Sleep(100);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
                 int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
-                tmp.Tell(new StartMessage(i*10, (uint)nodeToAsk * 10));
+                tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
                 attori.Add(tmp);
             }
@@ -40,10 +38,18 @@ namespace DistributedKeyValueStore.NET
 
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nMessaggi: ");
+            Console.WriteLine("\nUpdate Messages: ");
+            Console.ResetColor();
+
+            client.Tell(new UpdateMessage(69, "420"));
+
+            Thread.Sleep(3000);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nRead Messages: ");
             Console.ResetColor();
 
             client.Tell(new GetMessage(69));
+
             //client.Tell(new GetMessage(6));
 
             //-----------------------------------------------------------------------------------------

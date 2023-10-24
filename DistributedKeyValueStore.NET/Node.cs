@@ -1,4 +1,8 @@
-﻿namespace DistributedKeyValueStore.NET
+﻿using Akka.Actor;
+using System.Collections.Concurrent;
+using static DistributedKeyValueStore.NET.Constants;
+
+namespace DistributedKeyValueStore.NET
 {
     internal class Node : UntypedActor
     {
@@ -10,6 +14,8 @@
         public uint Id { get; private set; }
         //Hashset thread-safe per le richieste get
         readonly ConcurrentDictionary<int, GetDataStructure> getRequestsData = new();
+        //Hashset thread-safe per le richieste update
+        readonly ConcurrentDictionary<uint, List<bool>> updateRequestsData = new();
         /* N.B. Tutti i metodi pubblici e protetti sono thread-safe tranne quelli implementati tramite interfaccia
          * https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2?view=net-7.0
          */
@@ -162,17 +168,79 @@
 
         protected void OnWrite(WriteMessage message)
         {
+            Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
             // Write e' forzata
             var Key = message.Key;
             var Value = message.Value;
             var Version = message.Version;
             if (Value == null) return;
-            data.Add(Key, Value, Version);
+            if (Version == 0)
+            {
+                var doc = data[Key];
+                if (doc != null)
+                {
+                    Version = doc.Version + 1;
+                }
+                else
+                {
+                    Version = 1;
+                }
+            }
+            data.Add(Key, Value, Version, false);
         }
 
         protected void OnUpdate(UpdateMessage message)
         {
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} received UPDATE from {Sender.Path.Name} => Key:{message.Key}, Value: {message.Value}");
 
+            //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
+            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
+
+            //Recupero i nodi che tengono quel valore
+            List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
+
+            //La variabile Sender e Self non sono presenti nel contesto del Timer quindi salvo i riferimenti
+            IActorRef SenderRef = Sender;
+            IActorRef SelfRef = Self;
+            var ContextRef = Context;
+            //Funzione di callback
+            timoutTimer.Elapsed += (source, e) =>
+            {
+                Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
+                //Rimuovo i dati della richiesta UPDATE se esistono
+                if (updateRequestsData.TryRemove(message.Key, out List<bool>? updateRequestDataForKey))
+                {
+                    int count = 0;
+                    foreach (bool res in updateRequestDataForKey)
+                        if (res) count++;
+                    if (count >= WRITE_QUORUM)
+                    {
+                        // manda WRITE message a tutti
+                        foreach (uint node in nodesWithValue)
+                            ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value));
+
+                        if (debug)
+                            Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
+                    }
+                    else
+                    {
+                        if (debug)
+                            Console.WriteLine($"{SelfRef.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
+                    }
+                }
+                else if (debug)
+                    Console.WriteLine($"{SelfRef.Path.Name} UPDATE no response received in timeout limit => Key:{message.Key}");
+            };
+            timoutTimer.AutoReset = false;
+            timoutTimer.Enabled = true;
+
+            //Invio messaggi di PREWRITE a tutti gli altri nodi che hanno il valore
+            foreach (uint node in nodesWithValue)
+                Context.ActorSelection($"/user/node{node}").Tell(new PreWriteMessage(message.Key));
+
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} sended PREWRITE to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnGet(GetMessage message)
@@ -274,6 +342,7 @@
 
         protected void OnPreWrite(PreWriteMessage message)
         {
+            // todo aggiungere timeout per resettare prewriteblock, attualmente resettato solo al write
             var Key = message.Key;
             var doc = data[Key];
             if (doc == null)
@@ -298,6 +367,28 @@
 
         protected void OnPreWriteResponse(PreWriteResponseMessage message)
         {
+            if (updateRequestsData.TryGetValue(message.Key, out List<bool>? updateRequestDataForKey))
+            {
+                //Aggiungo il result ricevuto ai dati
+                updateRequestDataForKey.Add(message.Result);
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+            }
+            else
+            {
+                // inizializzo l'array per collezionare i dati
+
+                var newList = new List<bool>
+                {
+                    message.Result
+                };
+
+                updateRequestsData.TryAdd(message.Key, newList);
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+            }
 
         }
 

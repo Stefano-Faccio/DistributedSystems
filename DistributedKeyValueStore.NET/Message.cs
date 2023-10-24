@@ -37,15 +37,15 @@
 
     internal class ReadMessage : KeyMessage
     {
-        public int GetId {get; private set;}
-        public ReadMessage(uint Key, int readId) : base(Key) 
+        public int GetId { get; private set; }
+        public ReadMessage(uint Key, int readId) : base(Key)
         {
             GetId = readId;
         }
     }
     internal class ReadResponseMessage : KeyValueMessage
     {
-        public int GetId {get; private set;}
+        public int GetId { get; private set; }
         public bool PreWriteBlock { get; private set; }
         public uint Version { get; private set; }
         public ReadResponseMessage(uint key, string? value, int getId, uint version, bool preWriteBlock) : base(key, value)
@@ -73,7 +73,7 @@
         }
 
         public GetResponseMessage(uint Key, bool timeout) : base(Key, null)
-        { 
+        {
             Timeout = timeout;
         }
     }
@@ -100,6 +100,11 @@
         public WriteMessage(uint Key, string? value, uint version) : base(Key, value)
         {
             this.Version = version;
+        }
+
+        public WriteMessage(uint Key, string? value) : base(Key, value)
+        {
+            this.Version = 0;
         }
     }
 

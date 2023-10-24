@@ -23,11 +23,11 @@
             PreWriteBlock = preWriteBlock;
         }
 
-        public bool GetPreWriteBlock() { return this.preWriteBlock; }
+        public bool GetPreWriteBlock() { return this.PreWriteBlock; }
 
-        public void ClearPreWriteBlock() { this.preWriteBlock = false; }
+        public void ClearPreWriteBlock() { this.PreWriteBlock = false; }
 
-        public void SetPreWriteBlock() { this.preWriteBlock = true; }
+        public void SetPreWriteBlock() { this.PreWriteBlock = true; }
 
         public Document Update(string value, uint version)
         {

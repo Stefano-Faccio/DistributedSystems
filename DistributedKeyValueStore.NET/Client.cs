@@ -1,14 +1,9 @@
 ﻿using Akka.Actor;
 using MathNet.Numerics.Random;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DistributedKeyValueStore.NET
 {
-    internal class Client: UntypedActor
+    internal class Client : UntypedActor
     {
         //Lista degli altri nodi
         SortedSet<uint> nodes = new SortedSet<uint>();
@@ -53,10 +48,22 @@ namespace DistributedKeyValueStore.NET
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length-1]} => Key:{message.Key}");
+                Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}");
 
             //Qui la richiesta parte
             receiver.Tell(new GetMessage(message.Key), Self);
+        }
+        protected void DoUpdateRequest(UpdateMessage message)
+        {
+            //Prendo un nodo a caso
+            MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
+
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} request WRITE from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}, Value:{message.Value}");
+
+            //Qui la richiesta parte
+            receiver.Tell(message, Self);
         }
 
         protected void OnGetResponse(GetResponseMessage message)
@@ -80,7 +87,7 @@ namespace DistributedKeyValueStore.NET
 
         protected override void OnReceive(object msg)
         {
-            switch(msg)
+            switch (msg)
             {
                 case GetResponseMessage message:
                     OnGetResponse(message);
@@ -88,6 +95,9 @@ namespace DistributedKeyValueStore.NET
                 case GetMessage message:
                     DoGetRequest(message);
                     break;
+                case UpdateMessage message:
+                    DoUpdateRequest(message);
+                    return;
                 case AddNodeMessage message:
                     AddNode(message);
                     break;
