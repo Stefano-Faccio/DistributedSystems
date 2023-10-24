@@ -14,8 +14,8 @@ namespace DistributedKeyValueStore.NET
         public uint Id { get; private set; }
         //Hashset thread-safe per le richieste get
         readonly ConcurrentDictionary<int, GetDataStructure> getRequestsData = new();
-        //Hashset thread-safe per le richieste update
-        readonly ConcurrentDictionary<uint, List<bool>> updateRequestsData = new();
+        //Hashset thread-safe per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
+        readonly ConcurrentDictionary<uint, List<uint>> updateRequestsData = new();
         /* N.B. Tutti i metodi pubblici e protetti sono thread-safe tranne quelli implementati tramite interfaccia
          * https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2?view=net-7.0
          */
@@ -174,18 +174,6 @@ namespace DistributedKeyValueStore.NET
             var Value = message.Value;
             var Version = message.Version;
             if (Value == null) return;
-            if (Version == 0)
-            {
-                var doc = data[Key];
-                if (doc != null)
-                {
-                    Version = doc.Version + 1;
-                }
-                else
-                {
-                    Version = 1;
-                }
-            }
             data.Add(Key, Value, Version, false);
         }
 
@@ -209,16 +197,14 @@ namespace DistributedKeyValueStore.NET
             {
                 Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
                 //Rimuovo i dati della richiesta UPDATE se esistono
-                if (updateRequestsData.TryRemove(message.Key, out List<bool>? updateRequestDataForKey))
+                if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
                 {
-                    int count = 0;
-                    foreach (bool res in updateRequestDataForKey)
-                        if (res) count++;
+                    int count = updateRequestDataForKey.Count;
                     if (count >= WRITE_QUORUM)
                     {
                         // manda WRITE message a tutti
                         foreach (uint node in nodesWithValue)
-                            ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value));
+                            ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value, updateRequestDataForKey.Max() + 1));
 
                         if (debug)
                             Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
@@ -348,29 +334,31 @@ namespace DistributedKeyValueStore.NET
             if (doc == null)
             {
                 // Non abbiamo il valore salvato, quindi per noi va bene aggiungerlo
-                Sender.Tell(new PreWriteResponseMessage(message.Key, true), Self);
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true, 0), Self);
                 return;
             }
             bool preWriteBlock = doc.GetPreWriteBlock();
             if (preWriteBlock)
             {
                 // Siamo gia' in prewrite per questa chiave, quindi diciamo che non possiamo aggiornare
-                Sender.Tell(new PreWriteResponseMessage(message.Key, false), Self);
+                Sender.Tell(new PreWriteResponseMessage(message.Key, false, 0), Self);
             }
             else
             {
                 doc.SetPreWriteBlock();
                 // Va bene aggiornare il valore per noi
-                Sender.Tell(new PreWriteResponseMessage(message.Key, true), Self);
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true, doc.Version), Self);
             }
         }
 
         protected void OnPreWriteResponse(PreWriteResponseMessage message)
         {
-            if (updateRequestsData.TryGetValue(message.Key, out List<bool>? updateRequestDataForKey))
+            // non abbiamo ricevuto una risposta positiva
+            if (!message.Result) return;
+            if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateRequestDataForKey))
             {
                 //Aggiungo il result ricevuto ai dati
-                updateRequestDataForKey.Add(message.Result);
+                updateRequestDataForKey.Add(message.Version);
 
                 if (debug)
                     Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
@@ -379,9 +367,9 @@ namespace DistributedKeyValueStore.NET
             {
                 // inizializzo l'array per collezionare i dati
 
-                var newList = new List<bool>
+                var newList = new List<uint>
                 {
-                    message.Result
+                    message.Version
                 };
 
                 updateRequestsData.TryAdd(message.Key, newList);

@@ -41,6 +41,13 @@ namespace DistributedKeyValueStore.NET
             Console.WriteLine("\nUpdate Messages: ");
             Console.ResetColor();
 
+            client.Tell(new UpdateMessage(69, "777"));
+
+            Thread.Sleep(3000);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nUpdate Messages: ");
+            Console.ResetColor();
+
             client.Tell(new UpdateMessage(69, "420"));
 
             Thread.Sleep(3000);

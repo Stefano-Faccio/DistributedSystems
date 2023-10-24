@@ -87,10 +87,12 @@
     {
         public uint Key { get; private set; }
         public bool Result { get; private set; }
-        public PreWriteResponseMessage(uint key, bool result)
+        public uint Version { get; private set; }
+        public PreWriteResponseMessage(uint key, bool result, uint version)
         {
             this.Key = key;
             this.Result = result;
+            this.Version = version;
         }
     }
 
@@ -100,11 +102,6 @@
         public WriteMessage(uint Key, string? value, uint version) : base(Key, value)
         {
             this.Version = version;
-        }
-
-        public WriteMessage(uint Key, string? value) : base(Key, value)
-        {
-            this.Version = 0;
         }
     }
 
