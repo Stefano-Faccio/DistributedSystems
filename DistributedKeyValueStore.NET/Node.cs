@@ -173,18 +173,16 @@ namespace DistributedKeyValueStore.NET
             var Key = message.Key;
             var Value = message.Value;
             var Version = message.Version;
-            if (Value == null) return;
+            if (Value is null) 
+                return;
+
             if (Version == 0)
             {
                 var doc = data[Key];
-                if (doc != null)
-                {
+                if (doc is not null)
                     Version = doc.Version + 1;
-                }
                 else
-                {
                     Version = 1;
-                }
             }
             data.Add(Key, Value, Version, false);
         }
@@ -213,7 +211,8 @@ namespace DistributedKeyValueStore.NET
                 {
                     int count = 0;
                     foreach (bool res in updateRequestDataForKey)
-                        if (res) count++;
+                        if (res) 
+                            count++;
                     if (count >= WRITE_QUORUM)
                     {
                         // manda WRITE message a tutti
@@ -345,7 +344,7 @@ namespace DistributedKeyValueStore.NET
             // todo aggiungere timeout per resettare prewriteblock, attualmente resettato solo al write
             var Key = message.Key;
             var doc = data[Key];
-            if (doc == null)
+            if (doc is null)
             {
                 // Non abbiamo il valore salvato, quindi per noi va bene aggiungerlo
                 Sender.Tell(new PreWriteResponseMessage(message.Key, true), Self);
