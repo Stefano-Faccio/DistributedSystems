@@ -1,4 +1,6 @@
-﻿namespace DistributedKeyValueStore.NET
+﻿using static DistributedKeyValueStore.NET.Constants;
+
+namespace DistributedKeyValueStore.NET
 {
     internal class Document : IEquatable<Document?>
     {
@@ -27,7 +29,19 @@
 
         public void ClearPreWriteBlock() { this.PreWriteBlock = false; }
 
-        public void SetPreWriteBlock() { this.PreWriteBlock = true; }
+        public void SetPreWriteBlock()
+        {
+            this.PreWriteBlock = true;
+            //Imposto un timer per resettare il valore del prewrite
+            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
+            //Funzione di callback
+            timoutTimer.Elapsed += (source, e) =>
+            {
+                this.PreWriteBlock = false;
+            };
+            timoutTimer.AutoReset = false;
+            timoutTimer.Enabled = true;
+        }
 
         public Document Update(string value, uint version)
         {
