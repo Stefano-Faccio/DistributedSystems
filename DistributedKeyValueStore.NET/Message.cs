@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DistributedKeyValueStore.NET
+﻿namespace DistributedKeyValueStore.NET
 {
     internal abstract class Message
     {
@@ -43,15 +37,15 @@ namespace DistributedKeyValueStore.NET
 
     internal class ReadMessage : KeyMessage
     {
-        public int GetId {get; private set;}
-        public ReadMessage(uint Key, int readId) : base(Key) 
+        public int GetId { get; private set; }
+        public ReadMessage(uint Key, int readId) : base(Key)
         {
             GetId = readId;
         }
     }
     internal class ReadResponseMessage : KeyValueMessage
     {
-        public int GetId {get; private set;}
+        public int GetId { get; private set; }
         public bool PreWriteBlock { get; private set; }
         public uint Version { get; private set; }
         public ReadResponseMessage(uint key, string? value, int getId, uint version, bool preWriteBlock) : base(key, value)
@@ -79,7 +73,7 @@ namespace DistributedKeyValueStore.NET
         }
 
         public GetResponseMessage(uint Key, bool timeout) : base(Key, null)
-        { 
+        {
             Timeout = timeout;
         }
     }
@@ -89,9 +83,26 @@ namespace DistributedKeyValueStore.NET
         public PreWriteMessage(uint Key) : base(Key) { }
     }
 
+    internal class PreWriteResponseMessage : Message
+    {
+        public uint Key { get; private set; }
+        public bool Result { get; private set; }
+        public uint Version { get; private set; }
+        public PreWriteResponseMessage(uint key, bool result, uint version)
+        {
+            this.Key = key;
+            this.Result = result;
+            this.Version = version;
+        }
+    }
+
     internal class WriteMessage : KeyValueMessage
     {
-        public WriteMessage(uint Key, string? value) : base(Key, value) { }
+        public uint Version { get; private set; }
+        public WriteMessage(uint Key, string? value, uint version) : base(Key, value)
+        {
+            this.Version = version;
+        }
     }
 
     internal class UpdateMessage : KeyValueMessage
@@ -130,7 +141,7 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetNodeListResponseMessage : NodeMessage
     {
-        public SortedSet<uint> Nodes{ get; private set; }
+        public SortedSet<uint> Nodes { get; private set; }
         public GetNodeListResponseMessage(uint id, SortedSet<uint> nodes) : base(id)
         {
             this.Nodes = nodes;
@@ -139,6 +150,6 @@ namespace DistributedKeyValueStore.NET
 
     internal class TestMessage : Message
     {
-        
+
     }
 }

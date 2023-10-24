@@ -1,17 +1,7 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-
-namespace DistributedKeyValueStore.NET
+﻿namespace DistributedKeyValueStore.NET
 {
     //https://stackoverflow.com/questions/1273139/c-sharp-java-hashmap-equivalent
-    internal class Collection 
+    internal class Collection
     {
         private Dictionary<uint, Document> dictionary;
 
@@ -26,9 +16,20 @@ namespace DistributedKeyValueStore.NET
         {
             //Sintassi interessante per controllare che un valore non sia null
             _ = document ?? throw new ArgumentNullException(nameof(document));
+            // Aggiorna se documento esiste
+            if (dictionary.ContainsKey(key))
+            {
+                // ignore writes with an older version
+                if (dictionary[key].Version < document.Version)
+                {
+                    dictionary[key].Update(document.Value, document.Version);
+                    dictionary[key].ClearPreWriteBlock();
+                }
+            }
             //Aggiunta nuovo documento
-            dictionary.Add(key, document);
-            return document;
+            else
+                dictionary.Add(key, document);
+            return dictionary[key];
         }
 
         public Document? Add(uint key, string value, uint version, bool preWriteBlock)
@@ -46,23 +47,12 @@ namespace DistributedKeyValueStore.NET
             return Add(key, value, 0);
         }
 
-        //Ritorna il documento aggiornato
-        public Document? Update(uint key, string value)
+        public void ClearPreWriteBlock(uint key)
         {
-            return dictionary[key].Update(value);
+            dictionary[key].ClearPreWriteBlock();
         }
 
-        public Document? Update(uint key, string value, uint version)
-        {
-            return dictionary[key].Update(value, version);
-        }
-
-        public void ClearPreWriteBlock(uint key) 
-        {
-            dictionary[key].ClearPreWriteBlock(); 
-        }
-
-        public void SetPreWriteBlock(uint key) 
+        public void SetPreWriteBlock(uint key)
         {
             dictionary[key].SetPreWriteBlock();
         }
@@ -84,19 +74,20 @@ namespace DistributedKeyValueStore.NET
                 return null;
             }
             set
-            {   
-                if(value is null)
+            {
+                if (value is null)
                 {
                     //Rimozione documento
                     Remove(key);
                 }
-                else if(dictionary.ContainsKey(key))
+                else if (dictionary.ContainsKey(key))
                 {
                     //Aggiornamento dell'intero documento
                     //I.E. Cambio di riferimento. Non permesso
                     throw new Exception("It is not possible to change the document associated with a key!");
                 }
-                else {
+                else
+                {
                     //Aggiunta nuovo documento
                     Add(key, value);
                 }
@@ -113,7 +104,7 @@ namespace DistributedKeyValueStore.NET
             string str = "";
             foreach (KeyValuePair<uint, Document> kvp in dictionary)
             {
-                str += kvp.Key + ": "+ kvp.Value.ToString() + "\n";
+                str += kvp.Key + ": " + kvp.Value.ToString() + "\n";
             }
             return str;
         }
@@ -125,7 +116,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Console.WriteLine(coll[5]);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
             }

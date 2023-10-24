@@ -1,11 +1,4 @@
-﻿
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -32,9 +25,23 @@ namespace DistributedKeyValueStore.NET
             PreWriteBlock = preWriteBlock;
         }
 
-        public void ClearPreWriteBlock() { PreWriteBlock = false; }
+        public bool GetPreWriteBlock() { return this.PreWriteBlock; }
 
-        public void SetPreWriteBlock() { PreWriteBlock = true; }
+        public void ClearPreWriteBlock() { this.PreWriteBlock = false; }
+
+        public void SetPreWriteBlock()
+        {
+            this.PreWriteBlock = true;
+            //Imposto un timer per resettare il valore del prewrite
+            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
+            //Funzione di callback
+            timoutTimer.Elapsed += (source, e) =>
+            {
+                this.PreWriteBlock = false;
+            };
+            timoutTimer.AutoReset = false;
+            timoutTimer.Enabled = true;
+        }
 
         public Document Update(string value, uint version)
         {
@@ -128,7 +135,7 @@ namespace DistributedKeyValueStore.NET
 
             Console.WriteLine("foo1.Equals(foo2): " + foo1.Equals(foo2));
             Console.WriteLine("foo2.Equals(foo1): " + foo2.Equals(foo1));
-            Console.WriteLine($"foo1 == foo2: { foo1 == foo2}");
+            Console.WriteLine($"foo1 == foo2: {foo1 == foo2}");
             Console.WriteLine($"foo1 != foo2: {foo1 != foo2}");
 
             Console.WriteLine("foo1 Hashcode: " + foo1.GetHashCode());

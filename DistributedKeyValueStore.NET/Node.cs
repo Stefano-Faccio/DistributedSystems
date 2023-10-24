@@ -1,8 +1,5 @@
 ﻿using Akka.Actor;
-using Newtonsoft.Json.Linq;
 using System.Collections.Concurrent;
-using System.Threading;
-using System.Timers;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -17,6 +14,8 @@ namespace DistributedKeyValueStore.NET
         public uint Id { get; private set; }
         //Hashset thread-safe per le richieste get
         readonly ConcurrentDictionary<int, GetDataStructure> getRequestsData = new();
+        //Hashset thread-safe per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
+        readonly ConcurrentDictionary<uint, List<uint>> updateRequestsData = new();
         /* N.B. Tutti i metodi pubblici e protetti sono thread-safe tranne quelli implementati tramite interfaccia
          * https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2?view=net-7.0
          */
@@ -120,8 +119,8 @@ namespace DistributedKeyValueStore.NET
             //Un nuovo nodo si presenta
             //Lo aggiungo alla lista dei nodi
             nodes.Add(message.Id);
-            
-            if(debug)
+
+            if (debug)
             {
                 Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
             }
@@ -169,12 +168,65 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnWrite(WriteMessage message)
         {
-
+            Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
+            // Write e' forzata
+            var Key = message.Key;
+            var Value = message.Value;
+            var Version = message.Version;
+            if (Value == null) return;
+            data.Add(Key, Value, Version, false);
         }
 
         protected void OnUpdate(UpdateMessage message)
         {
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} received UPDATE from {Sender.Path.Name} => Key:{message.Key}, Value: {message.Value}");
 
+            //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
+            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
+
+            //Recupero i nodi che tengono quel valore
+            List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
+
+            //La variabile Sender e Self non sono presenti nel contesto del Timer quindi salvo i riferimenti
+            IActorRef SenderRef = Sender;
+            IActorRef SelfRef = Self;
+            var ContextRef = Context;
+            //Funzione di callback
+            timoutTimer.Elapsed += (source, e) =>
+            {
+                Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
+                //Rimuovo i dati della richiesta UPDATE se esistono
+                if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
+                {
+                    int count = updateRequestDataForKey.Count;
+                    if (count >= WRITE_QUORUM)
+                    {
+                        // manda WRITE message a tutti
+                        foreach (uint node in nodesWithValue)
+                            ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value, updateRequestDataForKey.Max() + 1));
+
+                        if (debug)
+                            Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
+                    }
+                    else
+                    {
+                        if (debug)
+                            Console.WriteLine($"{SelfRef.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
+                    }
+                }
+                else if (debug)
+                    Console.WriteLine($"{SelfRef.Path.Name} UPDATE no response received in timeout limit => Key:{message.Key}");
+            };
+            timoutTimer.AutoReset = false;
+            timoutTimer.Enabled = true;
+
+            //Invio messaggi di PREWRITE a tutti gli altri nodi che hanno il valore
+            foreach (uint node in nodesWithValue)
+                Context.ActorSelection($"/user/node{node}").Tell(new PreWriteMessage(message.Key));
+
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} sended PREWRITE to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnGet(GetMessage message)
@@ -195,7 +247,8 @@ namespace DistributedKeyValueStore.NET
             IActorRef SenderRef = Sender;
             IActorRef SelfRef = Self;
             //Funzione di callback
-            timoutTimer.Elapsed += (source, e) => {
+            timoutTimer.Elapsed += (source, e) =>
+            {
                 //Rimuovo i dati della richiesta GET se esistono
                 if (getRequestsData.TryRemove(getID, out GetDataStructure? getRequestData))
                 {
@@ -237,11 +290,11 @@ namespace DistributedKeyValueStore.NET
             //Invio la risposta
             Sender.Tell(responseMessage, Self);
         }
-        
+
         private void OnReadResponse(ReadResponseMessage message)
         {
             //Prendo i dati della richiesta GET se esistono
-            if(getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData))
+            if (getRequestsData.TryGetValue(message.GetId, out GetDataStructure? getRequestData))
             {
                 //Aggiungo il valore ricevuto ai dati
                 getRequestData.Add(message.Value, message.Version, message.PreWriteBlock);
@@ -266,7 +319,7 @@ namespace DistributedKeyValueStore.NET
                         Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
                 }
             }
-            else if(debug)
+            else if (debug)
                 Console.WriteLine($"{Self.Path.Name} received READ RESPONSE (IGNORED) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
 
@@ -275,6 +328,55 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnPreWrite(PreWriteMessage message)
         {
+            // todo aggiungere timeout per resettare prewriteblock, attualmente resettato solo al write
+            var Key = message.Key;
+            var doc = data[Key];
+            if (doc is null)
+            {
+                // Non abbiamo il valore salvato, quindi per noi va bene aggiungerlo
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true, 0), Self);
+                return;
+            }
+            bool preWriteBlock = doc.GetPreWriteBlock();
+            if (preWriteBlock)
+            {
+                // Siamo gia' in prewrite per questa chiave, quindi diciamo che non possiamo aggiornare
+                Sender.Tell(new PreWriteResponseMessage(message.Key, false, 0), Self);
+            }
+            else
+            {
+                doc.SetPreWriteBlock();
+                // Va bene aggiornare il valore per noi
+                Sender.Tell(new PreWriteResponseMessage(message.Key, true, doc.Version), Self);
+            }
+        }
+
+        protected void OnPreWriteResponse(PreWriteResponseMessage message)
+        {
+            // non abbiamo ricevuto una risposta positiva
+            if (!message.Result) return;
+            if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateRequestDataForKey))
+            {
+                //Aggiungo il result ricevuto ai dati
+                updateRequestDataForKey.Add(message.Version);
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+            }
+            else
+            {
+                // inizializzo l'array per collezionare i dati
+
+                var newList = new List<uint>
+                {
+                    message.Version
+                };
+
+                updateRequestsData.TryAdd(message.Key, newList);
+
+                if (debug)
+                    Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+            }
 
         }
 
@@ -283,7 +385,7 @@ namespace DistributedKeyValueStore.NET
         protected override void OnReceive(object msg)
         {
             //if(msg is not null)
-            switch (msg) 
+            switch (msg)
             {
                 //MESSAGGI DI SUPPORTO
                 case StartMessage message:
@@ -321,6 +423,9 @@ namespace DistributedKeyValueStore.NET
                 case PreWriteMessage message:
                     OnPreWrite(message);
                     break;
+                case PreWriteResponseMessage message:
+                    OnPreWriteResponse(message);
+                    return;
 
                 //MESSAGGI DI TESTING
                 case TestMessage message:
