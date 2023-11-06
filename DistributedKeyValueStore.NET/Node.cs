@@ -159,6 +159,27 @@ namespace DistributedKeyValueStore.NET
             Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
         }
 
+        private void GetKeyListUnitilId(GetNodeListResponseMessage message) 
+        { 
+            //TODO
+
+        }
+
+        private void GetKeyListUnitilIdResponse(GetNodeListResponseMessage message)
+        {
+            //TODO
+
+            //MI piglio tutti i valori che mi servono
+
+            //for(In tutte le key)
+                // scopro chi la ha key
+                // per quel nodo, mi salvo che dovro chiedere anche questa key
+
+            //for(tutti i nodi)
+                // guardo quali key devo chiedere al nodo
+                // mando una read di tutti i valori contemporaneamente
+        }
+
         //-------------------------------------------------------------------------------------------------------
         //MESSAGGI DI UTILIZZO
 
@@ -317,7 +338,6 @@ namespace DistributedKeyValueStore.NET
             }
             else if (debug)
                 Console.WriteLine($"{Self.Path.Name} received READ RESPONSE (IGNORED) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
-
 
             //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
         }
