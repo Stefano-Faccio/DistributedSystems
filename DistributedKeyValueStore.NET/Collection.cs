@@ -99,6 +99,12 @@
             dictionary.Clear();
         }
 
+        //Ritorna tutte e solo le chiavi
+        public List<uint> KeyCollection()
+        {
+            return dictionary.Keys.ToList();
+        }
+
         public override string? ToString()
         {
             string str = "";

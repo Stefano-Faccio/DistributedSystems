@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -137,8 +138,8 @@ namespace DistributedKeyValueStore.NET
                 Console.WriteLine($"{Self.Path.Name} received GET NODE LIST from {Sender.Path.Name}");
                 Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
             }
-            //Ritorno (il riferimento) della lista dei nodi 
-            Sender.Tell(new GetNodeListResponseMessage(Id, new SortedSet<uint>(nodes)));
+            //Ritorno la lista dei nodi
+            Sender.Tell(new GetNodeListResponseMessage(Id, new SortedSet<uint>(nodes)), Self);
         }
 
         private void GetNodeListResponse(GetNodeListResponseMessage message)
@@ -153,10 +154,26 @@ namespace DistributedKeyValueStore.NET
             }
 
             //Mando un messaggio al prossimo nodo per prendere tutte le key che tiene
-            //TODO
+            uint nextNode = 0;
+            {
+                ImmutableList<uint> tmpList = nodes.ToImmutableList();
+                for(uint i = 0; i < tmpList.Count; i++)
+                    if (tmpList[(int)i] > this.Id)
+                    {
+                        nextNode = i;
+                        break;
+                    }
+            }
+            Context.ActorSelection($"/user/node{nextNode}").Tell(new GetKeysListMessage(), Self);
 
             //Mi annuncio a tutti gli altri nodi (me stesso compreso)
             Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+        }
+
+        private void GetKeysList(GetKeysListMessage message)
+        {
+            //restituisco la lista di chiavi che tengo
+            Sender.Tell(new GetKeysListResponseMessage(data.KeyCollection()), Self);
         }
 
         private void GetKeyListUnitilId(GetNodeListResponseMessage message) 

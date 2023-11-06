@@ -148,6 +148,21 @@
         }
     }
 
+    internal class GetKeysListMessage : Message
+    {
+        public GetKeysListMessage()
+        {
+        }
+    }
+    internal class GetKeysListResponseMessage : Message
+    {
+        List<uint> keysList;
+        public GetKeysListResponseMessage(List<uint> keysList)
+        {
+            this.keysList = keysList;
+        }
+    }
+
     internal class TestMessage : Message
     {
 
