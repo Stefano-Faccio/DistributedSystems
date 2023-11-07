@@ -8,7 +8,7 @@ namespace DistributedKeyValueStore.NET
         //MersenneTwister per i numeri casuali
         public static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
         //Numero di attori iniziali
-        const uint NATTORI = 5;
+        const uint NATTORI = 2;
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Blue;
@@ -36,6 +36,7 @@ namespace DistributedKeyValueStore.NET
 
             //----------------------------------------------------------------------------------------
 
+            /*
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\nUpdate Messages: ");
@@ -56,6 +57,7 @@ namespace DistributedKeyValueStore.NET
             Console.ResetColor();
 
             client.Tell(new GetMessage(69));
+            */
 
             //client.Tell(new GetMessage(6));
 

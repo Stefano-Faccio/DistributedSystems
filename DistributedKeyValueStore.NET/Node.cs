@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using Akka.Util.Internal;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using static DistributedKeyValueStore.NET.Constants;
@@ -150,10 +151,9 @@ namespace DistributedKeyValueStore.NET
             if (debug)
             {
                 Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
-                Console.WriteLine($"{Self.Path.Name} initialized succesfully");
             }
 
-            //Mando un messaggio al prossimo nodo per prendere tutte le key che tiene
+            //Prendo il prossimo nodo dopo di me
             uint nextNode = 0;
             {
                 ImmutableList<uint> tmpList = nodes.ToImmutableList();
@@ -164,37 +164,66 @@ namespace DistributedKeyValueStore.NET
                         break;
                     }
             }
-            Context.ActorSelection($"/user/node{nextNode}").Tell(new GetKeysListMessage(), Self);
 
+            //Mando un messaggio al prossimo nodo per prendere tutte le key che tiene
+            Context.ActorSelection($"/user/node{nextNode}").Tell(new GetKeysListMessage(this.Id), Self);
+
+            if (debug)
+            {
+                Console.WriteLine($"{Self.Path.Name} request GET KEYS LIST to node{nextNode}");
+            }
+
+            //*** Da rimuovere ***
+            //{Sender.Path.Name}
+            //Console.WriteLine($"{Self.Path.Name} initialized succesfully");
             //Mi annuncio a tutti gli altri nodi (me stesso compreso)
-            Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+            //Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
         }
 
         private void GetKeysList(GetKeysListMessage message)
         {
+            List<uint> keysToReturn = data.KeyCollection();
+
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST from {Sender.Path.Name}");
+
             //restituisco la lista di chiavi che tengo
-            Sender.Tell(new GetKeysListResponseMessage(data.KeyCollection()), Self);
+            // *** Todo filtrare le chiavi di cui non è responsbile il nuovo nodo***
+            Sender.Tell(new GetKeysListResponseMessage(keysToReturn), Self);
+
+            if(debug)
+                Console.WriteLine($"{Self.Path.Name} sended GET KEYS LIST RESPONSE to {Sender.Path.Name}  => Value:[{string.Join(",", keysToReturn)}]");
         }
 
-        private void GetKeyListUnitilId(GetNodeListResponseMessage message) 
-        { 
-            //TODO
-
-        }
-
-        private void GetKeyListUnitilIdResponse(GetNodeListResponseMessage message)
+        private void GetKeysListResponse(GetKeysListResponseMessage message)
         {
-            //TODO
+            if (debug)
+                Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST RESPONSE from {Sender.Path.Name}  => Value:[{string.Join(",", message.keysList)}]");
 
-            //MI piglio tutti i valori che mi servono
+            Dictionary<uint, List<uint>> bulkRead = new();
 
-            //for(In tutte le key)
-                // scopro chi la ha key
-                // per quel nodo, mi salvo che dovro chiedere anche questa key
+            //Per ogni chiave
+            message.keysList.ForEach(key =>
+            {
+                //Per ogni nodo che ha la chiave
 
-            //for(tutti i nodi)
-                // guardo quali key devo chiedere al nodo
-                // mando una read di tutti i valori contemporaneamente
+                //Qui sta il problema
+                List<uint> tmp = FindNodesThatKeepKey(key);
+                tmp.ForEach(node => {
+                    //Se la lista delle chiavi è già presente
+                    if (bulkRead.TryGetValue(node, out List<uint>? keys))
+                        keys.Add(key);
+                    else  
+                        bulkRead.Add(node, new List<uint> { key } );
+                });
+            });
+
+            bulkRead.ForEach(kvp =>
+            {
+                if(debug)
+                    Console.WriteLine($"Node = {kvp.Key}, Keys to ask = {string.Join(",", kvp.Value)}");
+            });
+
         }
 
         //-------------------------------------------------------------------------------------------------------
@@ -432,6 +461,12 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case GetNodeListResponseMessage message:
                     GetNodeListResponse(message);
+                    break;
+                case GetKeysListMessage message:
+                    GetKeysList(message);
+                    break;
+                case GetKeysListResponseMessage message:
+                    GetKeysListResponse(message);
                     break;
 
                 //MESSAGGI DI UTILIZZO

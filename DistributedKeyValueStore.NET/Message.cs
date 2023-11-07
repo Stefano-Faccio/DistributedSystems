@@ -148,15 +148,15 @@
         }
     }
 
-    internal class GetKeysListMessage : Message
+    internal class GetKeysListMessage : NodeMessage
     {
-        public GetKeysListMessage()
+        public GetKeysListMessage(uint id) : base(id)
         {
         }
     }
     internal class GetKeysListResponseMessage : Message
     {
-        List<uint> keysList;
+        public List<uint> keysList { get; private set; }
         public GetKeysListResponseMessage(List<uint> keysList)
         {
             this.keysList = keysList;
