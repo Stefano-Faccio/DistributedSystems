@@ -58,10 +58,12 @@ namespace DistributedKeyValueStore.NET
             //Creo la lista dei nodi da ritornare
             List<uint> returnList = new List<uint>(N);
             //Rappresenta il numero di nodi che devono ancora essere inseriti nella lista di ritorno
-            int nodesToFind = N;
+            int nodesToFind = Math.Min(N, sortedList.Count);
 
+            /*
             if (sortedList.Count < N)
                 throw new Exception("There are less Nodes active than N");
+            */
 
             for (int i = 0; i < sortedList.Count && nodesToFind > 0; i++)
             {
