@@ -2,6 +2,7 @@
 using Akka.Util.Internal;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Numerics;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -14,6 +15,8 @@ namespace DistributedKeyValueStore.NET
         SortedSet<uint> nodes = new();
         //Id del nodo
         public uint Id { get; private set; }
+        //Booleano che indica se il nodo è attivo ossia fa parte attivamente della rete
+        bool active = false;
         //Hashset thread-safe per le richieste get
         readonly ConcurrentDictionary<int, GetDataStructure> getRequestsData = new();
         //Hashset thread-safe per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
@@ -21,6 +24,9 @@ namespace DistributedKeyValueStore.NET
         /* N.B. Tutti i metodi pubblici e protetti sono thread-safe tranne quelli implementati tramite interfaccia
          * https://learn.microsoft.com/en-us/dotnet/api/system.collections.concurrent.concurrentdictionary-2?view=net-7.0
          */
+
+        //Hashset thread-safe per le read iniziali (numero di nodi che hanno quella chiave, numero di risposte per quella chiave ricevute)
+        readonly ConcurrentDictionary<uint, (uint, uint)> inizializationsBulkReadsData = new();
 
         //Teniamo una convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
@@ -31,24 +37,30 @@ namespace DistributedKeyValueStore.NET
         {
             //Setto l'id ad un valore di default
             Id = uint.MaxValue;
+            //Setto active a false per indicare che il nodo deve ancora aggiungersi alla rete
+            active = false;
         }
 
         protected override void PreStart()
         {
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} started succesfully");
-            }
+                lock (Console.Out)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"{Self.Path.Name} started succesfully");
+                    Console.ResetColor();
+                }
         }
 
         protected override void PostStop()
         {
             if (debug)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"{Self.Path.Name} is gone!");
-                Console.ResetColor();
-            }
+                lock (Console.Out)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"{Self.Path.Name} is gone!");
+                    Console.ResetColor();
+                }
         }
 
         private List<uint> FindNodesThatKeepKey(uint key)
@@ -82,6 +94,25 @@ namespace DistributedKeyValueStore.NET
             return returnList;
         }
 
+        private void ActivateNode()
+        {
+            if (active)
+                throw new Exception($"{Self.Path.Name} alreay active!");
+            //Mi annuncio a tutti gli altri nodi (me stesso compreso)
+            Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+
+            //Mi attivo
+            active = true;
+
+            if (debug)
+                lock (Console.Out)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"{Self.Path.Name} initialized succesfully");
+                    Console.ResetColor();
+                }
+        }
+
         //-------------------------------------------------------------------------------------------------------
         //MESSAGGI DI SUPPORTO
 
@@ -102,13 +133,8 @@ namespace DistributedKeyValueStore.NET
                     receiver.Tell(new GetNodeListMessage(this.Id), Self);
                 }
                 else
-                {
-                    //Mi annuncio a tutti gli altri nodi (client) (me stesso compreso)
-                    Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
-
-                    if (debug)
-                        Console.WriteLine($"{Self.Path.Name} initialized succesfully");
-                }
+                    //Attivo il nodo e lo aggiugno alla rete
+                    ActivateNode();
             }
             else
                 throw new Exception("Node already initialided");
@@ -121,9 +147,8 @@ namespace DistributedKeyValueStore.NET
             nodes.Add(message.Id);
 
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
-            }
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
 
             //Devo eliminare tutti gli elementi di cui non sono più responsabile
             //TODO
@@ -137,10 +162,11 @@ namespace DistributedKeyValueStore.NET
         private void GetNodeList(GetNodeListMessage message)
         {
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST from {Sender.Path.Name}");
-                Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
-            }
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} received GET NODE LIST from {Sender.Path.Name}");
+                    Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
+                }
             //Ritorno la lista dei nodi
             Sender.Tell(new GetNodeListResponseMessage(Id, new SortedSet<uint>(nodes)), Self);
         }
@@ -151,15 +177,14 @@ namespace DistributedKeyValueStore.NET
             nodes = new SortedSet<uint>(message.Nodes);
 
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
-            }
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
 
             //Prendo il prossimo nodo dopo di me
             uint nextNode = 0;
             {
                 ImmutableList<uint> tmpList = nodes.ToImmutableList();
-                for(uint i = 0; i < tmpList.Count; i++)
+                for (uint i = 0; i < tmpList.Count; i++)
                     if (tmpList[(int)i] > this.Id)
                     {
                         nextNode = i;
@@ -171,15 +196,8 @@ namespace DistributedKeyValueStore.NET
             Context.ActorSelection($"/user/node{nextNode}").Tell(new GetKeysListMessage(this.Id), Self);
 
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} request GET KEYS LIST to node{nextNode}");
-            }
-
-            //*** Da rimuovere ***
-            //{Sender.Path.Name}
-            //Console.WriteLine($"{Self.Path.Name} initialized succesfully");
-            //Mi annuncio a tutti gli altri nodi (me stesso compreso)
-            //Context.ActorSelection("/user/*").Tell(new AddNodeMessage(this.Id));
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} request GET KEYS LIST to node{nextNode}");
         }
 
         private void GetKeysList(GetKeysListMessage message)
@@ -187,45 +205,133 @@ namespace DistributedKeyValueStore.NET
             List<uint> keysToReturn = data.KeyCollection();
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST from {Sender.Path.Name}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST from {Sender.Path.Name}");
 
             //restituisco la lista di chiavi che tengo
             // *** Todo filtrare le chiavi di cui non è responsbile il nuovo nodo***
             Sender.Tell(new GetKeysListResponseMessage(keysToReturn), Self);
 
-            if(debug)
-                Console.WriteLine($"{Self.Path.Name} sended GET KEYS LIST RESPONSE to {Sender.Path.Name}  => Value:[{string.Join(",", keysToReturn)}]");
+            if (debug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} sended GET KEYS LIST RESPONSE to {Sender.Path.Name}  => Value:[{string.Join(",", keysToReturn)}]");
         }
 
         private void GetKeysListResponse(GetKeysListResponseMessage message)
         {
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST RESPONSE from {Sender.Path.Name}  => Value:[{string.Join(",", message.keysList)}]");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST RESPONSE from {Sender.Path.Name}  => Value:[{string.Join(",", message.KeysList)}]");
 
-            Dictionary<uint, List<uint>> bulkRead = new();
-
-            //Per ogni chiave
-            message.keysList.ForEach(key =>
+            if (message.KeysList.Count == 0)
             {
-                //Per ogni nodo che ha la chiave
+                //Questo è il caso in cui il db è ancora vuoto
+                //Il nodo può attivarsi senza nessun problema
 
-                //Qui sta il problema
-                List<uint> tmp = FindNodesThatKeepKey(key);
-                tmp.ForEach(node => {
-                    //Se la lista delle chiavi è già presente
-                    if (bulkRead.TryGetValue(node, out List<uint>? keys))
-                        keys.Add(key);
-                    else  
-                        bulkRead.Add(node, new List<uint> { key } );
+                ActivateNode();
+            }
+            else
+            {
+                //Ci sono già chiavi nel db. Bisogna recuperare questi elementi
+
+                //Struttura dati per salvarsi per ogni nodo tutte le chiavi da chiedere
+                Dictionary<uint, List<uint>> bulkRead = new();
+
+                //Per ogni chiave ricevuta
+                message.KeysList.ForEach(key =>
+                {
+                    //Prendo i nodi che hanno quella chiave
+                    List<uint> nodesWithKey = FindNodesThatKeepKey(key);
+                    //Per ogni nodo che ha la chiave
+                    nodesWithKey.ForEach(node =>
+                    {
+                        //Se la lista delle chiavi è già presente
+                        if (bulkRead.TryGetValue(node, out List<uint>? keys))
+                            keys.Add(key);
+                        else
+                            bulkRead.Add(node, new List<uint> { key });
+                    });
+
+                    //Inizializzo il numero di risposte bulkread
+                    //(numero di nodi che hanno quella chiave, numero di risposte per quella chiave ricevute)
+                    inizializationsBulkReadsData[key] = ((uint)nodesWithKey.Count, 0);
                 });
-            });
 
-            bulkRead.ForEach(kvp =>
+                bulkRead.ForEach(kvp =>
+                {
+                    if (debug)
+                        lock (Console.Out)
+                            Console.WriteLine($"{Self.Path.Name} sended BULK READ to node{kvp.Key} => Value:[{string.Join(",", kvp.Value)}]");
+
+                    //Se la lista di chiavi da chiedere non è vuota mando una bulk read ad ogni nodo
+                    if (kvp.Value.Count > 0)
+                        Context.ActorSelection($"/user/node{kvp.Key}").Tell(new BulkReadMessage(new(kvp.Value)), Self);
+                });
+            }
+        }
+
+        protected void BulkRead(BulkReadMessage message)
+        {
+            if (debug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received BULK READ from {Sender.Path.Name} => Value:[{string.Join(",", message.KeysList)}]");
+
+            //Mi salvo tutti i valori da inviare compreso di stato e versione
+            List<Document?> toSend = new();
+            message.KeysList.ForEach(key => toSend.Add(data[key]));
+
+            if (debug)
+                lock (Console.Out)
+                {
+                    string str = $"{Self.Path.Name} sended BULK READ RESPONSE to {Sender.Path.Name} => Values:";
+                    for (int i = 0; i < message.KeysList.Count; i++)
+                        str += $"\n\t{message.KeysList[i]} -> {toSend[i]}";
+
+                    Console.WriteLine(str);
+                }
+
+            Sender.Tell(new BulkReadResponseMessage(new(message.KeysList), toSend));
+        }
+        protected void BulkReadResponse(BulkReadResponseMessage message)
+        {
+            if (debug)
+                lock (Console.Out)
+                {
+                    string str = $"{Self.Path.Name} received BULK READ from {Sender.Path.Name} => Values:";
+                    for (int i = 0; i < message.KeysList.Count; i++)
+                        str += $"\n\t{message.KeysList[i]} -> {message.ValuesList[i]}";
+
+                    Console.WriteLine(str);
+                }
+
+            for (int i = 0; i < message.KeysList.Count; i++)
             {
-                if(debug)
-                    Console.WriteLine($"Node = {kvp.Key}, Keys to ask = {string.Join(",", kvp.Value)}");
-            });
+                //Aggiungo (o aggiorno se la versione è maggiore) i nuovi dati al db
+                data.Add(message.KeysList[i], message.ValuesList[i]);
 
+                //Se il nodo non è attivo
+                if (!active)
+                {
+                    //Controllo se il numero di risposte esiste nel dizionario
+                    //Esiste se:
+                    //La chiave è stata richiesta e il numero di risposte è < QUORUM e il numero di risposte è < NUMERO DI NODI CHE HANNO LA CHIAVE
+                    if (inizializationsBulkReadsData.TryGetValue(message.KeysList[i], out (uint nNodesThatKeepKey, uint nOfResponses) request))
+                    {
+                        //Se il numero di risposte è >= al QUORUM o comunque uguale al numero di nodi che hanno quella chiave
+                        if (request.nOfResponses + 1 >= INIT_QUORUM)// || request.nOfResponses + 1 == request.nNodesThatKeepKey)
+                            //Rimuovo la tupla dal dizionario
+                            inizializationsBulkReadsData.TryRemove(message.KeysList[i], out _);
+                        else
+                            //Aggiorno il numero di risposte ricevute
+                            inizializationsBulkReadsData.TryUpdate(message.KeysList[i], (request.nNodesThatKeepKey, request.nOfResponses + 1), request);
+                    }
+                }
+            }
+
+            //Se il nodo non è attivo e la struttura è vuota significa che ho ricevuto tutti i dati
+            //Quindi ho finito il setup del nodo e posso attivarmi annunciandomi a tutta la rete
+            if (!active && inizializationsBulkReadsData.IsEmpty)
+                ActivateNode();
         }
 
         //-------------------------------------------------------------------------------------------------------
@@ -233,8 +339,9 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnWrite(WriteMessage message)
         {
-            if(debug)
-                Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
+            if (debug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received WRITE => Key:{message.Key}, Value:{message.Value}, Version:{message.Version}");
 
             //La Write è forzata
             if (message.Value is not null)
@@ -244,7 +351,8 @@ namespace DistributedKeyValueStore.NET
         protected void OnUpdate(UpdateMessage message)
         {
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} received UPDATE from {Sender.Path.Name} => Key:{message.Key}, Value: {message.Value}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received UPDATE from {Sender.Path.Name} => Key:{message.Key}, Value: {message.Value}");
 
             //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
             System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
@@ -260,7 +368,8 @@ namespace DistributedKeyValueStore.NET
             timoutTimer.Elapsed += (source, e) =>
             {
                 if (debug)
-                    Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
+                    lock (Console.Out)
+                        Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
                 //Rimuovo i dati della richiesta UPDATE se esistono
                 if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
                 {
@@ -271,17 +380,26 @@ namespace DistributedKeyValueStore.NET
                         foreach (uint node in nodesWithValue)
                             ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value, updateRequestDataForKey.Max() + 1));
 
+                        //Messaggio di risposta positivo al client
+                        SenderRef.Tell(new UpdateResponseMessage(message.Key, message.Value, true), SelfRef);
+
                         if (debug)
-                            Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
+                            lock (Console.Out)
+                                Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
                     }
                     else
                     {
+                        //Messaggio di risposta negativo al client
+                        SenderRef.Tell(new UpdateResponseMessage(message.Key, message.Value, false), SelfRef);
+
                         if (debug)
-                            Console.WriteLine($"{SelfRef.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
+                            lock (Console.Out)
+                                Console.WriteLine($"{SelfRef.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
                     }
                 }
                 else if (debug)
-                    Console.WriteLine($"{SelfRef.Path.Name} UPDATE no response received in timeout limit => Key:{message.Key}");
+                    lock (Console.Out)
+                        Console.WriteLine($"{SelfRef.Path.Name} UPDATE no response received in timeout limit => Key:{message.Key}");
             };
             timoutTimer.AutoReset = false;
             timoutTimer.Enabled = true;
@@ -291,13 +409,15 @@ namespace DistributedKeyValueStore.NET
                 Context.ActorSelection($"/user/node{node}").Tell(new PreWriteMessage(message.Key));
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} sended PREWRITE to ALL NODES => Key:{message.Key}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} sended PREWRITE to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnGet(GetMessage message)
         {
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} received GET from {Sender.Path.Name} => Key:{message.Key}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received GET from {Sender.Path.Name} => Key:{message.Key}");
 
             //Genero un numero casuale id della richiesta GET
             int getID = SuperMain.mersenneTwister.Next();
@@ -322,10 +442,12 @@ namespace DistributedKeyValueStore.NET
                     SenderRef.Tell(new GetResponseMessage(message.Key, true), SelfRef);
 
                     if (debug)
-                        Console.WriteLine($"{SelfRef.Path.Name} sended GET RESPONSE (TIMEOUT) to {SenderRef.Path.Name} => Key:{message.Key}");
+                        lock (Console.Out)
+                            Console.WriteLine($"{SelfRef.Path.Name} sended GET RESPONSE (TIMEOUT) to {SenderRef.Path.Name} => Key:{message.Key}");
                 }
                 else if (debug)
-                    Console.WriteLine($"{SelfRef.Path.Name} TIMEOUT not achieved => Key:{message.Key}");
+                    lock (Console.Out)
+                        Console.WriteLine($"{SelfRef.Path.Name} TIMEOUT not achieved => Key:{message.Key}");
                 //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
             };
             timoutTimer.AutoReset = false;
@@ -339,7 +461,8 @@ namespace DistributedKeyValueStore.NET
                 Context.ActorSelection($"/user/node{node}").Tell(new ReadMessage(message.Key, getID));
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} sended READ to ALL NODES => Key:{message.Key}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} sended READ to ALL NODES => Key:{message.Key}");
         }
 
         protected void OnRead(ReadMessage message)
@@ -365,7 +488,8 @@ namespace DistributedKeyValueStore.NET
                 getRequestData.Add(message.Value, message.Version, message.PreWriteBlock);
 
                 if (debug)
-                    Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Version: {message.Version} PreWriteBlock: {message.PreWriteBlock}");
+                    lock (Console.Out)
+                        Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Version: {message.Version} PreWriteBlock: {message.PreWriteBlock}");
 
                 //Cerco di prendere il valore da restituire alla GET
                 string? returnValue = getRequestData.GetReturnValue();
@@ -385,7 +509,8 @@ namespace DistributedKeyValueStore.NET
                 }
             }
             else if (debug)
-                Console.WriteLine($"{Self.Path.Name} received READ RESPONSE (IGNORED) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} received READ RESPONSE (IGNORED) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"}");
 
             //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
         }
@@ -427,7 +552,8 @@ namespace DistributedKeyValueStore.NET
                     updateRequestDataForKey.Add(message.Version);
 
                     if (debug)
-                        Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+                        lock (Console.Out)
+                            Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
                 }
                 else
                 {
@@ -436,7 +562,8 @@ namespace DistributedKeyValueStore.NET
                     updateRequestsData.TryAdd(message.Key, newList);
 
                     if (debug)
-                        Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+                        lock (Console.Out)
+                            Console.WriteLine($"{Self.Path.Name} received first PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
                 }
             }
         }
@@ -470,7 +597,12 @@ namespace DistributedKeyValueStore.NET
                 case GetKeysListResponseMessage message:
                     GetKeysListResponse(message);
                     break;
-
+                case BulkReadResponseMessage message:
+                    BulkReadResponse(message);
+                    break;
+                case BulkReadMessage message:
+                    BulkRead(message);
+                    break;
                 //MESSAGGI DI UTILIZZO
                 case ReadMessage message:
                     OnRead(message);
@@ -506,14 +638,15 @@ namespace DistributedKeyValueStore.NET
         protected void Test(TestMessage message)
         {
             if (debug)
-            {
-                Console.WriteLine($"Count nodes: {nodes.Count}");
-                foreach (var foo in nodes)
+                lock (Console.Out)
                 {
-                    Console.Write(foo.ToString() + " ");
+                    Console.WriteLine($"Count nodes: {nodes.Count}");
+                    foreach (var foo in nodes)
+                    {
+                        Console.Write(foo.ToString() + " ");
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
-            }
         }
     }
 }

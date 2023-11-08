@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using MathNet.Numerics.Random;
+using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -8,7 +9,7 @@ namespace DistributedKeyValueStore.NET
         //MersenneTwister per i numeri casuali
         public static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
         //Numero di attori iniziali
-        const uint NATTORI = 2;
+        const uint NATTORI = 7;
         static void Main(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.Blue;
@@ -23,9 +24,16 @@ namespace DistributedKeyValueStore.NET
             //Lista attori
             List<IActorRef> attori = new List<IActorRef>((int)NATTORI);
 
-            for (uint i = 0; i < NATTORI; i++)
+            //------------------------------------------------------------------------------------------
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nFirst actors: ");
+            Console.ResetColor();
+
+            for (uint i = 0; i < (NATTORI > N ? N : NATTORI); i++)
             {
-                Thread.Sleep(100);
+                Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
                 int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
@@ -36,37 +44,94 @@ namespace DistributedKeyValueStore.NET
 
             //----------------------------------------------------------------------------------------
 
-            /*
+            
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nUpdate Messages: ");
+            Console.WriteLine("\nGet Message: ");
             Console.ResetColor();
+            client.Tell(new GetMessage(6));
 
-            client.Tell(new UpdateMessage(69, "777"));
-
-            Thread.Sleep(3000);
+            Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nUpdate Messages: ");
+            Console.WriteLine("\nUpdate Message: ");
             Console.ResetColor();
+            client.Tell(new UpdateMessage(6, "Comunisti con il Rolex!"));
 
-            client.Tell(new UpdateMessage(69, "420"));
-
-            Thread.Sleep(3000);
+            Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nRead Messages: ");
+            Console.WriteLine("\nGet Message: ");
+            Console.ResetColor();
+            client.Tell(new GetMessage(6));
+
+            //-------------------------------------------------------------
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nAdd actors: ");
             Console.ResetColor();
 
-            client.Tell(new GetMessage(69));
-            */
+            for (uint i = (uint)attori.Count; i < NATTORI - 2; i++)
+            {
+                Thread.Sleep(500);
+                IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
+                int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
+                //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
+                tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
+                //Aggiungo l'attore alla lista del main
+                attori.Add(tmp);
+            }
 
-            //client.Tell(new GetMessage(6));
+            //---------------------------------------------------------------------
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nUpdate Message: ");
+            Console.ResetColor();
+            client.Tell(new UpdateMessage(42, "H24 In gaina!"));
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nUpdate Message: ");
+            Console.ResetColor();
+            client.Tell(new UpdateMessage(26, "Alla canna del gas!"));
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nGet Message: ");
+            Console.ResetColor();
+            client.Tell(new GetMessage(42));
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nGet Message: ");
+            Console.ResetColor();
+            client.Tell(new GetMessage(26));
+
+            //----------------------------------------------------------------------
+
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nAdd actors: ");
+            Console.ResetColor();
+
+            for (uint i = (uint)attori.Count; i < NATTORI; i++)
+            {
+                Thread.Sleep(500);
+                IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
+                int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
+                //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
+                tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
+                //Aggiungo l'attore alla lista del main
+                attori.Add(tmp);
+            }
+
+            //------------------------------------------------------------------------
 
             //-----------------------------------------------------------------------------------------
 
             //Test
-            /*
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\nStart Test:");
             Console.ResetColor();
             foreach(var att in attori)
@@ -77,7 +142,6 @@ namespace DistributedKeyValueStore.NET
             }
             Console.WriteLine(client.Path);
             client.Tell(new TestMessage());
-            */
 
             Console.ReadKey();
         }

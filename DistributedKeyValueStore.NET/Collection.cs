@@ -8,7 +8,7 @@
         public Collection()
         {
             dictionary = new Dictionary<uint, Document>();
-            this.Add(69, new Document("H24 in gaina!"));
+            //this.Add(69, new Document("H24 in gaina!"));
         }
 
         //Ritorna il documento inserito

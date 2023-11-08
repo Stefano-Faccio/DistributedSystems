@@ -104,10 +104,19 @@
             this.Version = version;
         }
     }
-
+    
     internal class UpdateMessage : KeyValueMessage
     {
         public UpdateMessage(uint Key, string? value) : base(Key, value) { }
+    }
+
+    internal class UpdateResponseMessage : KeyValueMessage
+    {
+        public bool Achieved { get; private set; }
+        public UpdateResponseMessage(uint Key, string? value, bool Achieved) : base(Key, value) 
+        {
+            this.Achieved = Achieved;
+        }
     }
 
     internal class StartMessage : NodeMessage
@@ -156,10 +165,28 @@
     }
     internal class GetKeysListResponseMessage : Message
     {
-        public List<uint> keysList { get; private set; }
-        public GetKeysListResponseMessage(List<uint> keysList)
+        public List<uint> KeysList { get; private set; }
+        public GetKeysListResponseMessage(List<uint> KeysList)
         {
-            this.keysList = keysList;
+            this.KeysList = KeysList;
+        }
+    }
+    internal class BulkReadMessage : Message
+    {
+        public List<uint> KeysList { get; private set; }
+        public BulkReadMessage(List<uint> KeysList)
+        {
+            this.KeysList = KeysList;
+        }
+    }
+
+    internal class BulkReadResponseMessage : BulkReadMessage
+    {
+        public List<Document?> ValuesList { get; private set; }
+
+        public BulkReadResponseMessage(List<uint> KeysList, List<Document?> ValuesList) : base(KeysList)
+        {
+            this.ValuesList = ValuesList;
         }
     }
 

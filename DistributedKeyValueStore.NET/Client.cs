@@ -12,19 +12,21 @@ namespace DistributedKeyValueStore.NET
         protected override void PreStart()
         {
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} started succesfully");
-            }
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} started succesfully");
+                }
         }
 
         protected override void PostStop()
         {
             if (debug)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"{Self.Path.Name} is gone!");
-                Console.ResetColor();
-            }
+                lock (Console.Out)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"{Self.Path.Name} is gone!");
+                    Console.ResetColor();
+                }
         }
 
         protected void AddNode(AddNodeMessage message)
@@ -32,9 +34,10 @@ namespace DistributedKeyValueStore.NET
             nodes.Add(message.Id);
 
             if (debug)
-            {
-                Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
-            }
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
+                }
         }
         protected void RemoveNode(RemoveNodeMessage message)
         {
@@ -48,7 +51,10 @@ namespace DistributedKeyValueStore.NET
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}");
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}");
+                }
 
             //Qui la richiesta parte
             receiver.Tell(new GetMessage(message.Key), Self);
@@ -60,7 +66,10 @@ namespace DistributedKeyValueStore.NET
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
             if (debug)
-                Console.WriteLine($"{Self.Path.Name} request WRITE from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}, Value:{message.Value}");
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} request WRITE from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}, Value:{message.Value}");
+                }
 
             //Qui la richiesta parte
             receiver.Tell(message, Self);
@@ -68,20 +77,45 @@ namespace DistributedKeyValueStore.NET
 
         protected void OnGetResponse(GetResponseMessage message)
         {
-            if (debug)
+            lock (Console.Out)
+            {
+                if (message.Timeout)
+                    Console.ForegroundColor = ConsoleColor.Red;
+                else
+                    Console.ForegroundColor = ConsoleColor.Green;
+
                 Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Timeout:{message.Timeout}");
+                Console.ResetColor();
+            }
+        }
+
+        protected void OnUpdateResponse(UpdateResponseMessage message)
+        {
+            lock (Console.Out)
+            {
+                if (message.Achieved)
+                    Console.ForegroundColor = ConsoleColor.Green;
+                else
+                    Console.ForegroundColor = ConsoleColor.Red;
+
+                Console.WriteLine($"{Self.Path.Name} received UPDATE RESPONSE from {Sender.Path.Name} => => Key:{message.Key} Value:{message.Value ?? "null"} Achieved:{message.Achieved}");
+                Console.ResetColor();
+            }
         }
 
         protected void Test(TestMessage message)
         {
             if (debug)
             {
-                Console.WriteLine($"Count nodes: {nodes.Count}");
-                foreach (var foo in nodes)
+                lock (Console.Out)
                 {
-                    Console.Write(foo.ToString() + " ");
+                    Console.WriteLine($"Count nodes: {nodes.Count}");
+                    foreach (var foo in nodes)
+                    {
+                        Console.Write(foo.ToString() + " ");
+                    }
+                    Console.WriteLine();
                 }
-                Console.WriteLine();
             }
         }
 
@@ -89,6 +123,9 @@ namespace DistributedKeyValueStore.NET
         {
             switch (msg)
             {
+                case UpdateResponseMessage message:
+                    OnUpdateResponse(message);
+                    break;
                 case GetResponseMessage message:
                     OnGetResponse(message);
                     break;
