@@ -117,14 +117,19 @@ namespace DistributedKeyValueStore.NET
 
         private void GetKeysList(GetKeysListMessage message)
         {
-            List<uint> keysToReturn = data.KeyCollection();
-
             if (receiveDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} received GET KEYS LIST from {Sender.Path.Name}");
 
-            //restituisco la lista di chiavi che tengo
-            //***Todo filtrare le chiavi di cui non è responsbile il nuovo nodo***
+            //Aggiugo le chiavi di cui è responsabile il nuovo nodo
+            List<uint> keysToReturn = new();
+            data.KeyCollection().ForEach(key =>
+            {
+                if (FindNodesThatKeepKey(key, message.Id).Any(node => node == message.Id))
+                    keysToReturn.Add(key);
+            });
+
+            //Restituisco la lista di chiavi
             Sender.Tell(new GetKeysListResponseMessage(keysToReturn), Self);
 
             if (sendDebug)

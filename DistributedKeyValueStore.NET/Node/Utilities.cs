@@ -13,8 +13,25 @@ namespace DistributedKeyValueStore.NET
     {
         private List<uint> FindNodesThatKeepKey(uint key)
         {
+            //Prendo di default la lista dei nodi attuali
             //Converto l'albero autobilanciante in una lista ordinata
-            List<uint> sortedList = nodes.ToList();
+            return FindNodesThatKeepKey(key, nodes.ToList());
+        }
+        private List<uint> FindNodesThatKeepKey(uint key, uint newNode)
+        {
+            //Prendo di default la lista dei nodi attuali e aggiungo il nuovo elemento
+            //Converto l'albero autobilanciante in una lista ordinata
+
+            SortedSet<uint> nodesTmp = new(nodes)
+            {
+                newNode
+            };
+
+            return FindNodesThatKeepKey(key, nodesTmp.ToList());
+        }
+
+        private List<uint> FindNodesThatKeepKey(uint key, List<uint> sortedList)
+        {
             //Creo la lista dei nodi da ritornare
             List<uint> returnList = new List<uint>(N);
             //Rappresenta il numero di nodi che devono ancora essere inseriti nella lista di ritorno
