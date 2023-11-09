@@ -34,9 +34,6 @@ namespace DistributedKeyValueStore.NET
             //Funzione di callback
             timoutTimer.Elapsed += (source, e) =>
             {
-                if (generalDebug)
-                    lock (Console.Out)
-                        Console.WriteLine($"{SelfRef.Path.Name} processing UPDATE");
                 //Rimuovo i dati della richiesta UPDATE se esistono
                 if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
                 {
@@ -115,17 +112,10 @@ namespace DistributedKeyValueStore.NET
                     lock (Console.Out)
                         Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
 
-                if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateRequestDataForKey))
-                {
-                    //Aggiungo il result ricevuto ai dati
-                    updateRequestDataForKey.Add(message.Version);
-                }
-                else
-                {
-                    // inizializzo l'array per collezionare i dati
-                    List<uint> newList = new() { message.Version };
-                    updateRequestsData.TryAdd(message.Key, newList);
-                }
+                updateRequestsData.AddOrUpdate(message.Key, new List<uint>() { message.Version }, (key, updateList) => {
+                    updateList.Add(message.Version);
+                    return updateList;
+                });
             }
         }
 
