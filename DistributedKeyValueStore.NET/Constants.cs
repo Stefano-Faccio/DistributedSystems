@@ -20,7 +20,7 @@ namespace DistributedKeyValueStore.NET
 
         public static readonly bool generalDebug = true;
         public static readonly bool deepDebug = false;
-        public static readonly bool receiveDebug = true;
+        public static readonly bool receiveDebug = false;
         public static readonly bool sendDebug = true;
     }
 }

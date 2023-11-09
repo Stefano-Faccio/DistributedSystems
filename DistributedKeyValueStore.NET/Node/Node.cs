@@ -86,12 +86,12 @@ namespace DistributedKeyValueStore.NET
                 case WriteMessage message:
                     OnWrite(message);
                     break;
-                case PreWriteMessage message:
-                    OnPreWrite(message);
-                    break;
                 case PreWriteResponseMessage message:
                     OnPreWriteResponse(message);
                     return;
+                case PreWriteMessage message:
+                    OnPreWrite(message);
+                    break;
                 case TestMessage message:
                     Test(message);
                     break;
