@@ -6,8 +6,6 @@ namespace DistributedKeyValueStore.NET
 {
     internal class SuperMain
     {
-        //MersenneTwister per i numeri casuali
-        public static MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
         //Numero di attori iniziali
         const uint NATTORI = 7;
         static void Main(string[] args)
@@ -35,7 +33,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
@@ -74,7 +72,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
@@ -118,7 +116,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? mersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main

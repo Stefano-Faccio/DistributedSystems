@@ -22,7 +22,7 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} received GET from {Sender.Path.Name} => Key:{message.Key}");
 
             //Genero un numero casuale id della richiesta GET
-            int getID = SuperMain.mersenneTwister.Next();
+            int getID = MersenneTwister.Next();
 
             //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
             if (!getRequestsData.TryAdd(getID, new GetDataStructure(message.Key, Sender.Path.Name)))
