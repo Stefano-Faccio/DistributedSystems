@@ -10,7 +10,7 @@ using static DistributedKeyValueStore.NET.Constants;
 namespace DistributedKeyValueStore.NET
 {
     //Funzioni per eseguire l'opzione update, write e prewrite
-    internal partial class Node : UntypedActor
+    internal partial class Node : UntypedActor, IWithTimers
     {
         //Hashset thread-safe per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
         readonly ConcurrentDictionary<uint, List<uint>> updateRequestsData = new();

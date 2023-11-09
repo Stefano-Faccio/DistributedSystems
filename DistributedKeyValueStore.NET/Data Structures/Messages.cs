@@ -1,4 +1,6 @@
-﻿namespace DistributedKeyValueStore.NET
+﻿using Akka.Actor;
+
+namespace DistributedKeyValueStore.NET
 {
     internal abstract class Message
     {
@@ -38,9 +40,9 @@
     internal class ReadMessage : KeyMessage
     {
         public int GetId { get; private set; }
-        public ReadMessage(uint Key, int readId) : base(Key)
+        public ReadMessage(uint Key, int GetId) : base(Key)
         {
-            GetId = readId;
+            this.GetId = GetId;
         }
     }
     internal class ReadResponseMessage : KeyValueMessage
@@ -187,6 +189,14 @@
         public BulkReadResponseMessage(List<uint> KeysList, List<Document?> ValuesList) : base(KeysList)
         {
             this.ValuesList = ValuesList;
+        }
+    }
+    internal class TimeoutGetMessage : ReadMessage
+    {
+        public IActorRef Sender { get; private set; }
+        public TimeoutGetMessage(uint Key, int GetId, IActorRef Sender) : base(Key, GetId)
+        {
+            this.Sender = Sender;
         }
     }
 

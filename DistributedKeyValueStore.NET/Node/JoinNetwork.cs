@@ -12,7 +12,7 @@ using static DistributedKeyValueStore.NET.Constants;
 namespace DistributedKeyValueStore.NET
 {
     //Funzioni per inizializzare e aggiungere il nodo alla rete
-    internal partial class Node : UntypedActor
+    internal partial class Node : UntypedActor, IWithTimers
     {
         //Hashset thread-safe per le read iniziali (numero di nodi che hanno quella chiave, numero di risposte per quella chiave ricevute)
         readonly ConcurrentDictionary<uint, (uint, uint)> inizializationsBulkReadsData = new();

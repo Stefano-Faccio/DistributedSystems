@@ -9,7 +9,7 @@ using static DistributedKeyValueStore.NET.Constants;
 namespace DistributedKeyValueStore.NET
 {
     //Funzioni per rimuovere il nodo dalla rete e spegnerlo
-    internal partial class Node : UntypedActor
+    internal partial class Node : UntypedActor, IWithTimers
     {
         protected override void PostStop()
         {

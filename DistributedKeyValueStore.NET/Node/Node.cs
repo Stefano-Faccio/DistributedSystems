@@ -9,7 +9,7 @@ using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
-    internal partial class Node : UntypedActor
+    internal partial class Node : UntypedActor, IWithTimers
     {
         //Datatabase dei dati chiave valore del nodo
         readonly Collection data = new();
@@ -17,6 +17,9 @@ namespace DistributedKeyValueStore.NET
         SortedSet<uint> nodes = new();
         //Id del nodo
         public uint Id { get; private set; }
+        //Per i timeout
+        public ITimerScheduler Timers { get; set; }
+
         //Booleano che indica se il nodo è attivo ossia fa parte attivamente della rete
         bool active = false;
 
@@ -35,6 +38,9 @@ namespace DistributedKeyValueStore.NET
         {
             switch (msg)
             {
+                case TimeoutGetMessage message:
+                    OnGetTimout(message);
+                    break;
                 case StartMessage message:
                     Start(message);
                     break;

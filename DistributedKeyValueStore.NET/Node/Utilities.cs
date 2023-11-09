@@ -9,7 +9,7 @@ using static DistributedKeyValueStore.NET.Constants;
 namespace DistributedKeyValueStore.NET
 {
     //Funzioni aggiungive generiche e di test
-    internal partial class Node : UntypedActor
+    internal partial class Node : UntypedActor, IWithTimers
     {
         private List<uint> FindNodesThatKeepKey(uint key)
         {
