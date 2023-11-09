@@ -12,8 +12,8 @@ namespace DistributedKeyValueStore.NET
     //Funzioni per eseguire l'opzione update, write e prewrite
     internal partial class Node : UntypedActor, IWithTimers
     {
-        //Hashset thread-safe per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
-        readonly ConcurrentDictionary<uint, List<uint>> updateRequestsData = new();
+        //Hashset per le richieste update, i valori nella lista sono le versioni che vengono ritornate dal prewrite message
+        readonly Dictionary<uint, List<uint>> updateRequestsData = new();
 
         protected void OnUpdate(UpdateMessage message)
         {
@@ -21,52 +21,11 @@ namespace DistributedKeyValueStore.NET
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} received UPDATE from {Sender.Path.Name} => Key:{message.Key}, Value: {message.Value}");
 
-            //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
-            System.Timers.Timer timoutTimer = new System.Timers.Timer(TIMEOUT_TIME);
-
             //Recupero i nodi che tengono quel valore
             List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
 
-            //La variabile Sender e Self non sono presenti nel contesto del Timer quindi salvo i riferimenti
-            IActorRef SenderRef = Sender;
-            IActorRef SelfRef = Self;
-            IUntypedActorContext ContextRef = Context;
-            //Funzione di callback
-            timoutTimer.Elapsed += (source, e) =>
-            {
-                //Rimuovo i dati della richiesta UPDATE se esistono
-                if (updateRequestsData.TryRemove(message.Key, out List<uint>? updateRequestDataForKey))
-                {
-                    int count = updateRequestDataForKey.Count;
-                    if (count >= WRITE_QUORUM)
-                    {
-                        // manda WRITE message a tutti
-                        foreach (uint node in nodesWithValue)
-                            ContextRef.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value, updateRequestDataForKey.Max() + 1));
-
-                        //Messaggio di risposta positivo al client
-                        SenderRef.Tell(new UpdateResponseMessage(message.Key, message.Value, true), SelfRef);
-
-                        if (sendDebug)
-                            lock (Console.Out)
-                                Console.WriteLine($"{SelfRef.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
-                    }
-                    else
-                    {
-                        //Messaggio di risposta negativo al client
-                        SenderRef.Tell(new UpdateResponseMessage(message.Key, message.Value, false), SelfRef);
-
-                        if (generalDebug)
-                            lock (Console.Out)
-                                Console.WriteLine($"{SelfRef.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
-                    }
-                }
-                else if (generalDebug)
-                    lock (Console.Out)
-                        Console.WriteLine($"{SelfRef.Path.Name} UPDATE no response received in timeout limit => Key:{message.Key}");
-            };
-            timoutTimer.AutoReset = false;
-            timoutTimer.Enabled = true;
+            //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
+            Timers.StartSingleTimer($"Update{MersenneTwister.Next()}", new TimeoutUpdateMessage(message.Key, message.Value, new(nodesWithValue), Sender), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
 
             //Invio messaggi di PREWRITE a tutti gli altri nodi che hanno il valore
             foreach (uint node in nodesWithValue)
@@ -75,6 +34,22 @@ namespace DistributedKeyValueStore.NET
             if (sendDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} sended PREWRITE to ALL NODES => Key:{message.Key}");
+        }
+
+        private void OnUpdateTimout(TimeoutUpdateMessage message)
+        {
+            if(updateRequestsData.Remove(message.Key, out _))
+            {
+                //Messaggio di risposta negativo al client
+                message.Sender.Tell(new UpdateResponseMessage(message.Key, message.Value, false), Self);
+
+                if (generalDebug)
+                    lock (Console.Out)
+                        Console.WriteLine($"{Self.Path.Name} UPDATE did not receive enough positive responses, aborting => Key:{message.Key}");
+            }
+            else if (deepDebug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} UPDATE TIMEOUT not achieved => Key:{message.Key} Value:{message.Value}");
         }
 
         protected void OnPreWrite(PreWriteMessage message)
@@ -112,10 +87,32 @@ namespace DistributedKeyValueStore.NET
                     lock (Console.Out)
                         Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
 
-                updateRequestsData.AddOrUpdate(message.Key, new List<uint>() { message.Version }, (key, updateList) => {
+                /*
+            //Rimuovo i dati della richiesta UPDATE se esistono
+            if (updateRequestsData.Remove(message.Key, out List<uint>? updateRequestDataForKey))
+            {
+                int count = updateRequestDataForKey.Count;
+                if (count >= WRITE_QUORUM)
+                {
+                    // manda WRITE message a tutti
+                    foreach (uint node in message.NodesWithValue)
+                        Context.ActorSelection($"/user/node{node}").Tell(new WriteMessage(message.Key, message.Value, updateRequestDataForKey.Max() + 1));
+
+                    //Messaggio di risposta positivo al client
+                    message.Sender.Tell(new UpdateResponseMessage(message.Key, message.Value, true), Self);
+
+                    if (sendDebug)
+                        lock (Console.Out)
+                            Console.WriteLine($"{Self.Path.Name} sended WRITE to ALL NODES => Key:{message.Key}, New Value: {message.Value}");
+                }
+            }*/
+
+
+                //Se il valore è nel dizionario aggiungo, altrimenti creo la lista ed aggiungo il valore
+                if (updateRequestsData.TryGetValue(message.Key, out List<uint>? updateList))
                     updateList.Add(message.Version);
-                    return updateList;
-                });
+                else
+                    updateRequestsData.Add(message.Key, new List<uint> { message.Version });
             }
         }
 

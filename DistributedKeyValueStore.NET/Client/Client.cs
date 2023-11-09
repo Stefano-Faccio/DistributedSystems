@@ -98,7 +98,7 @@ namespace DistributedKeyValueStore.NET
                 else
                     Console.ForegroundColor = ConsoleColor.Red;
 
-                Console.WriteLine($"{Self.Path.Name} received UPDATE RESPONSE from {Sender.Path.Name} => => Key:{message.Key} Value:{message.Value ?? "null"} Achieved:{message.Achieved}");
+                Console.WriteLine($"{Self.Path.Name} received UPDATE RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Achieved:{message.Achieved}");
                 Console.ResetColor();
             }
         }

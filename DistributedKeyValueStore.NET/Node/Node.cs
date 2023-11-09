@@ -41,6 +41,9 @@ namespace DistributedKeyValueStore.NET
                 case TimeoutGetMessage message:
                     OnGetTimout(message);
                     break;
+                case TimeoutUpdateMessage message:
+                    OnUpdateTimout(message);
+                    break;
                 case StartMessage message:
                     Start(message);
                     break;

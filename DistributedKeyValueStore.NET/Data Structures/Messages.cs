@@ -200,6 +200,17 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class TimeoutUpdateMessage : KeyValueMessage
+    {
+        public List<uint> NodesWithValue { get; private set; }
+        public IActorRef Sender { get; private set; }
+        public TimeoutUpdateMessage(uint Key, string? Value, List<uint> NodesWithValue, IActorRef Sender) : base(Key, Value)
+        {
+            this.NodesWithValue = NodesWithValue;
+            this.Sender = Sender;
+        }
+    }
+
     internal class TestMessage : Message
     {
 

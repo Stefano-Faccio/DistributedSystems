@@ -55,9 +55,9 @@ namespace DistributedKeyValueStore.NET
                     lock (Console.Out)
                         Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (TIMEOUT) to {message.Sender.Path.Name} => Key:{message.Key}");
             }
-            else if (generalDebug)
+            else if (deepDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} TIMEOUT not achieved => Key:{message.Key}");
+                    Console.WriteLine($"{Self.Path.Name} GET TIMEOUT not achieved => Key:{message.Key}");
             //Se getRequestData è null posso ignorare la risposta in quanto è già stata soddisfatta
         }
 
