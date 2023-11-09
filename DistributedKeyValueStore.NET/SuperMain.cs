@@ -139,6 +139,7 @@ namespace DistributedKeyValueStore.NET
                 Console.WriteLine(att.Path);
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
+                Console.WriteLine();
             }
             Console.WriteLine(client.Path);
             client.Tell(new TestMessage());
