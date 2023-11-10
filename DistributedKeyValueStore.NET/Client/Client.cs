@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using MathNet.Numerics.Random;
+using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
 {
@@ -8,10 +9,9 @@ namespace DistributedKeyValueStore.NET
         //Lista degli altri nodi
         SortedSet<uint> nodes = new SortedSet<uint>();
 
-        bool debug = true;
         protected override void PreStart()
         {
-            if (debug)
+            if (generalDebug)
                 lock (Console.Out)
                 {
                     Console.WriteLine($"{Self.Path.Name} started succesfully");
@@ -20,7 +20,7 @@ namespace DistributedKeyValueStore.NET
 
         protected override void PostStop()
         {
-            if (debug)
+            if (generalDebug)
                 lock (Console.Out)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -33,7 +33,7 @@ namespace DistributedKeyValueStore.NET
         {
             nodes.Add(message.Id);
 
-            if (debug)
+            if (deepDebug)
                 lock (Console.Out)
                 {
                     Console.WriteLine($"{Self.Path.Name} added node {message.Id}");
@@ -41,7 +41,13 @@ namespace DistributedKeyValueStore.NET
         }
         protected void RemoveNode(RemoveNodeMessage message)
         {
+            nodes.Remove(message.Id);
 
+            if (deepDebug)
+                lock (Console.Out)
+                {
+                    Console.WriteLine($"{Self.Path.Name} removed node {message.Id}");
+                }
         }
 
         protected void DoGetRequest(GetMessage message)
@@ -50,7 +56,7 @@ namespace DistributedKeyValueStore.NET
             MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
-            if (debug)
+            if (generalDebug)
                 lock (Console.Out)
                 {
                     Console.WriteLine($"{Self.Path.Name} request GET from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}");
@@ -65,7 +71,7 @@ namespace DistributedKeyValueStore.NET
             MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
             ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
 
-            if (debug)
+            if (generalDebug)
                 lock (Console.Out)
                 {
                     Console.WriteLine($"{Self.Path.Name} request WRITE from {receiver.Path[receiver.Path.Length - 1]} => Key:{message.Key}, Value:{message.Value}");
@@ -105,17 +111,14 @@ namespace DistributedKeyValueStore.NET
 
         protected void Test(TestMessage message)
         {
-            if (debug)
+            lock (Console.Out)
             {
-                lock (Console.Out)
+                Console.WriteLine($"Count nodes: {nodes.Count}");
+                foreach (var foo in nodes)
                 {
-                    Console.WriteLine($"Count nodes: {nodes.Count}");
-                    foreach (var foo in nodes)
-                    {
-                        Console.Write(foo.ToString() + " ");
-                    }
-                    Console.WriteLine();
+                    Console.Write(foo.ToString() + " ");
                 }
+                Console.WriteLine();
             }
         }
 

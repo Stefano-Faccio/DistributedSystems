@@ -132,6 +132,13 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class StopMessage : NodeMessage
+    {
+        public StopMessage(uint id) : base(id)
+        {
+        }
+    }
+
     internal class AddNodeMessage : NodeMessage
     {
         public AddNodeMessage(uint id) : base(id)
@@ -184,6 +191,15 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class BulkWriteMessage : Message
+    {
+        public List<(uint, Document)> KeyValuesList { get; private set; }
+        public BulkWriteMessage(List<(uint, Document)> KeyValuesList)
+        {
+            this.KeyValuesList = KeyValuesList;
+        }
+    }
+
     internal class BulkReadResponseMessage : BulkReadMessage
     {
         public List<Document?> ValuesList { get; private set; }
@@ -208,6 +224,12 @@ namespace DistributedKeyValueStore.NET
         public TimeoutUpdateMessage(uint Key, int UpdateId) : base(Key)
         {
             this.UpdateId = UpdateId;
+        }
+    }
+    internal class TimeoutShutdownMessage : Message
+    {
+        public TimeoutShutdownMessage()
+        {
         }
     }
 

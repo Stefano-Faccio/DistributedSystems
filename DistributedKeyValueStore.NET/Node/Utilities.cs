@@ -56,25 +56,30 @@ namespace DistributedKeyValueStore.NET
 
         protected void Test(TestMessage message)
         {
-            //Stampo tutti i nodi che ho aggiunto
+            
             lock (Console.Out)
             {
-                Console.Write($"\tCount nodes ({nodes.Count}): [");
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                Console.WriteLine($"****** {Self.Path.Name} ****** ");
+                Console.ResetColor();
+
+                //Stampo tutti i nodi che ho aggiunto
+                Console.Write($"Count nodes ({nodes.Count}): [");
                 foreach (var foo in nodes)
                 {
                     Console.Write(foo.ToString() + " ");
                 }
                 Console.WriteLine("]");
-            }
 
-            //Stampo tutti i valori che ho nel db 
-            lock (Console.Out)
-            {
+                //Stampo tutti i valori che ho nel db 
                 List<uint> keyCollection = data.KeyCollection();
-                Console.WriteLine($"\tData ({keyCollection.Count}) : ");
+                Console.WriteLine($"Data ({keyCollection.Count}) : ");
                 keyCollection.ForEach(key =>
                 {
-                    Console.WriteLine($"\t\t{key} -> {data[key]}");
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.Write($"\t{key}");
+                    Console.ResetColor();
+                    Console.WriteLine($" -> {data[key]}");
                 });
             }
         }

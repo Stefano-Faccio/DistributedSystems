@@ -33,7 +33,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.myMersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
@@ -72,7 +72,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.myMersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
@@ -116,7 +116,7 @@ namespace DistributedKeyValueStore.NET
             {
                 Thread.Sleep(500);
                 IActorRef tmp = system.ActorOf<Node>("node" + (i * 10).ToString());
-                int nodeToAsk = attori.Count > 0 ? Constants.MersenneTwister.Next(attori.Count) : 0;
+                int nodeToAsk = attori.Count > 0 ? Constants.myMersenneTwister.Next(attori.Count) : 0;
                 //Messaggio di start (id, id del nodo a cui chiedere la lista dei nodi)
                 tmp.Tell(new StartMessage(i * 10, (uint)nodeToAsk * 10));
                 //Aggiungo l'attore alla lista del main
@@ -125,19 +125,41 @@ namespace DistributedKeyValueStore.NET
 
             //------------------------------------------------------------------------
 
-            //-----------------------------------------------------------------------------------------
+            //Test
+            Thread.Sleep(500);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nStart Test:");
+            Console.ResetColor();
+            foreach (var att in attori)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+            Console.WriteLine(client.Path);
+            client.Tell(new TestMessage());
+
+            //------------------------------------------------------------------------
+
+            //Stop Node
+            Thread.Sleep(500);
+            int actorToStop = myMersenneTwister.Next(0, attori.Count);
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine("\nStop Node:");
+            Console.ResetColor();
+            attori[actorToStop].Tell(new StopMessage((uint)actorToStop));
+            attori.RemoveAt(actorToStop);
+
+            //------------------------------------------------------------------------
 
             //Test
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\nStart Test:");
             Console.ResetColor();
-            foreach(var att in attori)
+            foreach (var att in attori)
             {
-                Console.WriteLine(att.Path);
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
-                Console.WriteLine();
             }
             Console.WriteLine(client.Path);
             client.Tell(new TestMessage());

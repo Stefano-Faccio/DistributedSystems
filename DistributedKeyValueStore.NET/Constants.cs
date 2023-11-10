@@ -9,8 +9,8 @@ namespace DistributedKeyValueStore.NET
 {
     internal static class Constants
     {
-        //MersenneTwister per i numeri casuali
-        public static MersenneTwister MersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+        //myMersenneTwister per i numeri casuali
+        public static MersenneTwister myMersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
 
         public static readonly int N = 3;
         public static readonly int READ_QUORUM = 2;
@@ -19,8 +19,8 @@ namespace DistributedKeyValueStore.NET
         public static readonly int INIT_QUORUM = 2;
 
         public static readonly bool generalDebug = true;
-        public static readonly bool deepDebug = false;
-        public static readonly bool receiveDebug = false;
+        public static readonly bool deepDebug = true;
+        public static readonly bool receiveDebug = true;
         public static readonly bool sendDebug = true;
     }
 }

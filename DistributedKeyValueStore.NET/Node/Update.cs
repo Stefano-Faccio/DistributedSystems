@@ -35,7 +35,7 @@ namespace DistributedKeyValueStore.NET
             else
             {
                 //Genero un numero casuale id della nuova richiesta UPDATE
-                int updateID = MersenneTwister.Next();
+                int updateID = myMersenneTwister.Next();
 
                 //Recupero i nodi che tengono il valore richiesto
                 List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);

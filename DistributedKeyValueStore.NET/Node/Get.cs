@@ -22,14 +22,14 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} received GET from {Sender.Path.Name} => Key:{message.Key}");
 
             //Genero un numero casuale id della richiesta GET
-            int getID = MersenneTwister.Next();
+            int getID = myMersenneTwister.Next();
 
             //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
             if (!getRequestsData.TryAdd(getID, new GetDataStructure(message.Key, Sender.Path.Name)))
                 throw new Exception("Errors adding item to getRequestsData Dictionary");
 
             //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
-            Timers.StartSingleTimer($"Get{MersenneTwister.Next()}", new TimeoutGetMessage(message.Key, getID, Sender), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
+            Timers.StartSingleTimer($"Get{myMersenneTwister.Next()}", new TimeoutGetMessage(message.Key, getID, Sender), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
 
             //Recupero i nodi che tengono quel valore
             List<uint> nodesWithValue = FindNodesThatKeepKey(message.Key);
