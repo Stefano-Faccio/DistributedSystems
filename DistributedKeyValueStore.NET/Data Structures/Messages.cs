@@ -191,6 +191,20 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class RequestToLeaveMessage : NodeMessage
+    {
+        public RequestToLeaveMessage(uint id) : base(id)
+        { }
+    }
+    internal class RequestToLeaveResponseMessage : NodeMessage
+    {
+        public bool Success { get; private set; }
+        public RequestToLeaveResponseMessage(uint id, bool success) : base(id)
+        {
+            Success = success;
+        }
+    }
+
     internal class BulkWriteMessage : Message
     {
         public List<(uint, Document)> KeyValuesList { get; private set; }
@@ -229,6 +243,13 @@ namespace DistributedKeyValueStore.NET
     internal class TimeoutShutdownMessage : Message
     {
         public TimeoutShutdownMessage()
+        {
+        }
+    }
+
+    internal class TimeoutLeaveMessage : Message
+    {
+        public TimeoutLeaveMessage()
         {
         }
     }

@@ -147,7 +147,7 @@ namespace DistributedKeyValueStore.NET
             Console.WriteLine("\nStop Node:");
             Console.ResetColor();
             attori[actorToStop].Tell(new StopMessage((uint)actorToStop));
-            attori.RemoveAt(actorToStop);
+            //attori.RemoveAt(actorToStop);
 
             //------------------------------------------------------------------------
 
@@ -178,3 +178,5 @@ Console.WriteLine(attNew.Path);
 attNew.Tell(new TestMessage());
 Thread.Sleep(1000);
 */
+
+//Format code with Ctrl + k Ctrl + d

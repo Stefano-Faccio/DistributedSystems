@@ -47,6 +47,9 @@ namespace DistributedKeyValueStore.NET
                 case TimeoutShutdownMessage message:
                     OnShutdownTimout(message);
                     break;
+                case TimeoutLeaveMessage message:
+                    OnLeaveTimout(message);
+                    break;
                 case StartMessage message:
                     Start(message);
                     break;
@@ -73,6 +76,12 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case BulkReadResponseMessage message:
                     BulkReadResponse(message);
+                    break;
+                case RequestToLeaveMessage message:
+                    RequestToLeave(message);
+                    break;
+                case RequestToLeaveResponseMessage message:
+                    RequestToLeaveResponse(message);
                     break;
                 case BulkReadMessage message:
                     BulkRead(message);
