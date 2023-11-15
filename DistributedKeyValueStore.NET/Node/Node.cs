@@ -44,11 +44,14 @@ namespace DistributedKeyValueStore.NET
                 case TimeoutUpdateMessage message:
                     OnUpdateTimout(message);
                     break;
-                case TimeoutShutdownMessage message:
-                    OnShutdownTimout(message);
+                case TimeoutShutdown1Message message:
+                    OnShutdownTimout1(message);
                     break;
-                case TimeoutLeaveMessage message:
-                    OnLeaveTimout(message);
+                case TimeoutShutdown2Message message:
+                    OnShutdownTimout2(message);
+                    break;
+                case TimeoutShutdown3Message message:
+                    OnShutdownTimout3(message);
                     break;
                 case StartMessage message:
                     Start(message);
@@ -100,6 +103,9 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case GetMessage message:
                     OnGet(message);
+                    break;
+                case GetResponseMessage message:
+                    GetResponseShutdown(message);
                     break;
                 case WriteMessage message:
                     OnWrite(message);

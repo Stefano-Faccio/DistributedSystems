@@ -193,14 +193,19 @@ namespace DistributedKeyValueStore.NET
 
     internal class RequestToLeaveMessage : NodeMessage
     {
-        public RequestToLeaveMessage(uint id) : base(id)
-        { }
+        public int LeaveId { get; private set; }
+        public RequestToLeaveMessage(uint id, int leaveId) : base(id)
+        {
+            LeaveId = leaveId;
+        }
     }
     internal class RequestToLeaveResponseMessage : NodeMessage
     {
+        public int LeaveId { get; private set; }
         public bool Success { get; private set; }
-        public RequestToLeaveResponseMessage(uint id, bool success) : base(id)
+        public RequestToLeaveResponseMessage(uint id, int leaveId, bool success) : base(id)
         {
+            LeaveId = leaveId;
             Success = success;
         }
     }
@@ -240,16 +245,23 @@ namespace DistributedKeyValueStore.NET
             this.UpdateId = UpdateId;
         }
     }
-    internal class TimeoutShutdownMessage : Message
+    internal class TimeoutShutdown1Message : Message
     {
-        public TimeoutShutdownMessage()
+        public TimeoutShutdown1Message()
         {
         }
     }
 
-    internal class TimeoutLeaveMessage : Message
+    internal class TimeoutShutdown2Message : Message
     {
-        public TimeoutLeaveMessage()
+        public TimeoutShutdown2Message()
+        {
+        }
+    }
+
+    internal class TimeoutShutdown3Message : Message
+    {
+        public TimeoutShutdown3Message()
         {
         }
     }
