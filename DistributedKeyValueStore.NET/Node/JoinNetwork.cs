@@ -14,8 +14,8 @@ namespace DistributedKeyValueStore.NET
     //Funzioni per inizializzare e aggiungere il nodo alla rete
     internal partial class Node : UntypedActor, IWithTimers
     {
-        //Hashset thread-safe per le read iniziali (numero di nodi che hanno quella chiave, numero di risposte per quella chiave ricevute)
-        readonly ConcurrentDictionary<uint, (uint, uint)> inizializationsBulkReadsData = new();
+        //Hashset per le read iniziali (numero di nodi che hanno quella chiave, numero di risposte per quella chiave ricevute)
+        readonly Dictionary<uint, (uint, uint)> inizializationsBulkReadsData = new();
 
         protected override void PreStart()
         {
@@ -239,17 +239,17 @@ namespace DistributedKeyValueStore.NET
                         //Se il numero di risposte è >= al QUORUM o comunque uguale al numero di nodi che hanno quella chiave
                         if (request.nOfResponses + 1 >= INIT_QUORUM)// || request.nOfResponses + 1 == request.nNodesThatKeepKey)
                             //Rimuovo la tupla dal dizionario
-                            inizializationsBulkReadsData.TryRemove(message.KeysList[i], out _);
+                            inizializationsBulkReadsData.Remove(message.KeysList[i]);
                         else
                             //Aggiorno il numero di risposte ricevute
-                            inizializationsBulkReadsData.TryUpdate(message.KeysList[i], (request.nNodesThatKeepKey, request.nOfResponses + 1), request);
+                            inizializationsBulkReadsData[message.KeysList[i]] = (request.nNodesThatKeepKey, request.nOfResponses + 1);
                     }
                 }
             }
 
             //Se il nodo non è attivo e la struttura è vuota significa che ho ricevuto tutti i dati
             //Quindi ho finito il setup del nodo e posso attivarmi annunciandomi a tutta la rete
-            if (!active && inizializationsBulkReadsData.IsEmpty)
+            if (!active && inizializationsBulkReadsData.Count == 0)
                 ActivateNode();
         }
 
