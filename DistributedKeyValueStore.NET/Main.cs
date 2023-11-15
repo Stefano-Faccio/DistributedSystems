@@ -9,6 +9,7 @@ namespace DistributedKeyValueStore.NET
 {
     internal class SuperMain
     {
+
         //Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
         static void Main(string[] args)
         {
@@ -22,9 +23,17 @@ namespace DistributedKeyValueStore.NET
 
         static void Menu()
         {
+            //Varibili per il menu
             uint menuChoice;
             bool stop = false;
-            ConsoleColor coloreMenu = ConsoleColor.DarkYellow;
+            ConsoleColor coloreMenu = ConsoleColor.Blue;
+
+            //Variabili per il funzioanamento della rete
+            List<uint> nodi = new();
+            List<uint> clients = new();
+
+            // Creazione contenitore per gli actors
+            ActorSystem system = ActorSystem.Create("povoland");
 
             PrintHeader("*** Distributed KeyValue Store with Akka.NET ***", "Simone Marocco & Stefano Faccio");
             WriteLine();
@@ -40,13 +49,13 @@ namespace DistributedKeyValueStore.NET
                 WriteLine("3) Join network");
                 WriteLine("3) Leave network");
                 WriteLine("4) Create new node");
-                WriteLine("4) Create new client");
-                WriteLine("5) See network overview");
+                WriteLine("5) Create new client");
+                WriteLine("6) See network overview");
 
                 do
                 {
                     ForegroundColor = coloreMenu;
-                    Write("Scegli un'opzione: ");
+                    Write("Select an option: ");
                     ForegroundColor = ConsoleColor.Gray;
                 } while (!UInt32.TryParse(ReadLine(), out menuChoice));
                     
@@ -58,6 +67,45 @@ namespace DistributedKeyValueStore.NET
                     case 1:
                         //Get
                         //client.Tell(new GetMessage(6));
+                        break;
+                    case 4:
+                        uint newNodeId;
+                        uint nodeToAskId;
+                        string str;
+
+                        do
+                        {
+                            Write("Insert new node Id (for default just press enter): ");
+                            str = ReadLine() ?? "";
+
+                            if(str.Trim() == "")
+                            {
+                                newNodeId = nodi.Count > 0 ? nodi.Max() + 10 : 0;
+                                break;
+                            }
+                        } while (!UInt32.TryParse(str, out newNodeId));
+
+                        do
+                        {
+                            Write("Insert the node Id to ask the list of nodes (for random node just press enter): ");
+                            str = ReadLine() ?? "";
+
+                            if (str.Trim() == "")
+                            {
+                                nodeToAskId = nodi.Count > 0 ? nodi[myMersenneTwister.Next(nodi.Count)] : newNodeId;
+                                break;
+                            }
+                        } while (!UInt32.TryParse(ReadLine(), out nodeToAskId));
+
+                        WriteLine($"Create new node with id {newNodeId} and ask to node {nodeToAskId} for info\n");
+
+                        nodi.Add(newNodeId);
+                        system.ActorOf<Node>("node" + newNodeId.ToString()).Tell(new StartMessage(newNodeId, nodeToAskId));
+
+                        Thread.Sleep(500);
+
+                        WriteLine();
+
                         break;
                     default:
                         Clear();
