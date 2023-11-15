@@ -1,10 +1,4 @@
 ﻿using Akka.Actor;
-using Akka.Util.Internal;
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -36,6 +30,18 @@ namespace DistributedKeyValueStore.NET
 
         protected override void OnReceive(object msg)
         {
+            if (!active)
+            {
+                if (generalDebug)
+                    lock (Console.Out)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"{Self.Path.Name} is crashed and cannot receive a message");
+                        Console.ResetColor();
+                    }
+                return;
+            }
+
             switch (msg)
             {
                 case TimeoutGetMessage message:
@@ -115,6 +121,12 @@ namespace DistributedKeyValueStore.NET
                     return;
                 case PreWriteMessage message:
                     OnPreWrite(message);
+                    break;
+                case CrashMessage message:
+                    onCrash(message);
+                    break;
+                case RecoverMessage message:
+                    onRecovery(message);
                     break;
                 case TestMessage message:
                     Test(message);

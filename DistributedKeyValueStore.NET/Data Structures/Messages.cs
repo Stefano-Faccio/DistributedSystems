@@ -83,7 +83,7 @@ namespace DistributedKeyValueStore.NET
     internal class PreWriteMessage : KeyMessage
     {
         public int UpdateId { get; private set; }
-        public PreWriteMessage(uint Key, int UpdateId) : base(Key) 
+        public PreWriteMessage(uint Key, int UpdateId) : base(Key)
         {
             this.UpdateId = UpdateId;
         }
@@ -108,7 +108,7 @@ namespace DistributedKeyValueStore.NET
             this.Version = version;
         }
     }
-    
+
     internal class UpdateMessage : KeyValueMessage
     {
         public UpdateMessage(uint Key, string? value) : base(Key, value) { }
@@ -117,7 +117,7 @@ namespace DistributedKeyValueStore.NET
     internal class UpdateResponseMessage : KeyValueMessage
     {
         public bool Achieved { get; private set; }
-        public UpdateResponseMessage(uint Key, string? value, bool Achieved) : base(Key, value) 
+        public UpdateResponseMessage(uint Key, string? value, bool Achieved) : base(Key, value)
         {
             this.Achieved = Achieved;
         }
@@ -228,6 +228,17 @@ namespace DistributedKeyValueStore.NET
             this.ValuesList = ValuesList;
         }
     }
+
+    internal class CrashMessage : NodeMessage
+    {
+        public CrashMessage(uint id) : base(id) { }
+    }
+
+    internal class RecoverMessage : NodeMessage
+    {
+        public RecoverMessage(uint id) : base(id) { }
+    }
+
     internal class TimeoutGetMessage : ReadMessage
     {
         public IActorRef Sender { get; private set; }
