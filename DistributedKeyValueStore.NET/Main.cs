@@ -6,10 +6,40 @@ namespace DistributedKeyValueStore.NET
 {
     internal class SuperMain
     {
-        //Numero di attori iniziali
-        const uint NATTORI = 7;
         static void Main(string[] args)
         {
+            Test();
+        }
+
+        static void Menu()
+        {
+            uint menuChoice;
+            bool stop = false;
+
+            while (!stop)
+            {
+                Console.WriteLine("Menu:");
+                //TODO WRITE MENU
+                Console.WriteLine("0) Exit");
+                do
+                {
+                    Console.Write("Scegli un'opzione: ");
+                } while (!UInt32.TryParse(Console.ReadLine(), out menuChoice));
+                    
+
+                switch (menuChoice) { 
+                    case 0:
+                        stop = true;
+                        break;
+                }
+            }
+        }
+
+        static void Test()
+        {
+            //Numero di attori iniziali
+            const uint NATTORI = 7;
+
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("Startup: ");
             Console.ResetColor();
@@ -42,7 +72,7 @@ namespace DistributedKeyValueStore.NET
 
             //----------------------------------------------------------------------------------------
 
-            
+
             Thread.Sleep(500);
             Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\nGet Message: ");
@@ -169,14 +199,5 @@ namespace DistributedKeyValueStore.NET
     }
 }
 
-/*
-Thread.Sleep(2000);
-//Aggiungo un altro attore
-var attNew = system.ActorOf<Node>("nodeNevio");
-attNew.Tell(new StartMessage(1000));
-Console.WriteLine(attNew.Path);
-attNew.Tell(new TestMessage());
-Thread.Sleep(1000);
-*/
 
 //Format code with Ctrl + k Ctrl + d
