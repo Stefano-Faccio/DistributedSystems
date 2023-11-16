@@ -105,7 +105,17 @@ namespace DistributedKeyValueStore.NET
                     OnGet(message);
                     break;
                 case GetResponseMessage message:
-                    GetResponseShutdown(message);
+                    switch(message.Identifier)
+                    {
+                        case GetIdentifier.NONE:
+                            break;
+                        case GetIdentifier.SHUTDOWN:
+                            GetResponseShutdown(message);
+                            break;
+                        case GetIdentifier.RECOVERY:
+                            //GetResponseRecovery(message);
+                            break;
+                    }
                     break;
                 case WriteMessage message:
                     OnWrite(message);
