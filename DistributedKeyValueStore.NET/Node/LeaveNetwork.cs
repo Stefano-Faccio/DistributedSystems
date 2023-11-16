@@ -129,7 +129,7 @@ namespace DistributedKeyValueStore.NET
                                 Console.WriteLine($"{Self.Path.Name} sendend SHUTDOWN GET to {Self.Path.Name} => Key:{key}");
                             }
 
-                        Self.Tell(new GetMessage(key));
+                        Self.Tell(new GetMessage(key, RequestIdentifier.SHUTDOWN));
                     });
                 }
             });
