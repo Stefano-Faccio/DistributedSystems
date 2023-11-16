@@ -16,9 +16,9 @@ namespace DistributedKeyValueStore.NET
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-            Menu();
+            //Menu();
 
-            //Test();
+            Test();
         }
 
         static void Menu()
@@ -35,7 +35,7 @@ namespace DistributedKeyValueStore.NET
             // Creazione contenitore per gli actors
             ActorSystem system = ActorSystem.Create("povoland");
 
-            PrintHeader("*** Distributed KeyValue Store with Akka.NET ***", "Simone Marocco & Stefano Faccio");
+            PrintHeader("*** Distributed KeyValue Store with Akka.NET ***", "Simone Marrocco & Stefano Faccio");
             WriteLine();
 
             while (!stop)
@@ -124,15 +124,16 @@ namespace DistributedKeyValueStore.NET
 
             char hor = '═';
             char ver = '║';
+            int myWindowWidth = WindowWidth - 1;
 
-            string start = "╔" + new string(hor, (WindowWidth - 2)) + "╗";
-            string end = "╚" + new string(hor, (WindowWidth - 2)) + "╝";
-            string newLine = ver + new string(' ', (WindowWidth - 2)) + ver;
+            string start = "╔" + new string(hor, (myWindowWidth - 2)) + "╗";
+            string end = "╚" + new string(hor, (myWindowWidth - 2)) + "╝";
+            string newLine = ver + new string(' ', (myWindowWidth - 2)) + ver;
             
-            string preTitle = ver + new string(' ', (int)Math.Ceiling((double)(WindowWidth - title.Length - 2) / 2));
-            string preSubtitle = ver + new string(' ', (int)Math.Ceiling((double)(WindowWidth - subtitle.Length - 2) / 2));
-            string postTitle = new string(' ', (int)Math.Floor((double)(WindowWidth - title.Length - 2) / 2)) + ver;
-            string postSubtitle = new string(' ', (int)Math.Floor((double)(WindowWidth - subtitle.Length - 2) / 2)) + ver;
+            string preTitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - title.Length - 2) / 2));
+            string preSubtitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - subtitle.Length - 2) / 2));
+            string postTitle = new string(' ', (int)Math.Floor((double)(myWindowWidth - title.Length - 2) / 2)) + ver;
+            string postSubtitle = new string(' ', (int)Math.Floor((double)(myWindowWidth - subtitle.Length - 2) / 2)) + ver;
 
             WriteLine(start);
             WriteLine(newLine);
