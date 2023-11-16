@@ -11,12 +11,12 @@ namespace DistributedKeyValueStore.NET
     {
         public string NodeName {  get; private set; }
         public uint Key { get; private set; }
-        public GetIdentifier Identifier { get; private set; }
+        public RequestIdentifier Identifier { get; private set; }
         private List<string?> Values { get; set; }
         private List<uint> Versions { get; set; }
         private List<bool> PreWriteBlocks { get; set; }
 
-        public GetDataStructure(uint key, string nodeName, GetIdentifier identifier) 
+        public GetDataStructure(uint key, string nodeName, RequestIdentifier identifier) 
         {
             Key = key;
             NodeName = nodeName;

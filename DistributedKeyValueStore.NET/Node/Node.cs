@@ -69,7 +69,17 @@ namespace DistributedKeyValueStore.NET
                     GetNodeList(message);
                     break;
                 case GetNodeListResponseMessage message:
-                    GetNodeListResponse(message);
+                    switch(message.Identifier)
+                    {
+                        case RequestIdentifier.NONE:
+                            GetNodeListResponse(message);
+                            break;
+                        case RequestIdentifier.RECOVERY:
+                            //
+                            break;
+                        default:
+                            throw new Exception("Not yet implemented!");
+                    }
                     break;
                 case GetKeysListMessage message:
                     GetKeysList(message);
@@ -107,14 +117,16 @@ namespace DistributedKeyValueStore.NET
                 case GetResponseMessage message:
                     switch(message.Identifier)
                     {
-                        case GetIdentifier.NONE:
+                        case RequestIdentifier.NONE:
                             break;
-                        case GetIdentifier.SHUTDOWN:
+                        case RequestIdentifier.SHUTDOWN:
                             GetResponseShutdown(message);
                             break;
-                        case GetIdentifier.RECOVERY:
+                        case RequestIdentifier.RECOVERY:
                             //GetResponseRecovery(message);
                             break;
+                        default:
+                            throw new Exception("Not yet implemented!");
                     }
                     break;
                 case WriteMessage message:
