@@ -2,6 +2,12 @@
 
 namespace DistributedKeyValueStore.NET
 {
+    public enum RequestIdentifier
+    {
+        NONE,
+        SHUTDOWN,
+        RECOVERY
+    };
     internal abstract class Message
     {
         public Message() { }
@@ -63,15 +69,20 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetMessage : KeyMessage
     {
-        public GetMessage(uint Key) : base(Key) { }
+        public RequestIdentifier Identifier { get; private set; }
+        public GetMessage(uint Key, RequestIdentifier identifier = RequestIdentifier.NONE) : base(Key) { 
+            this.Identifier = identifier;
+        }
     }
 
     internal class GetResponseMessage : KeyValueMessage
     {
+        public RequestIdentifier Identifier { get; private set; }
         public bool Timeout { get; private set; }
-        public GetResponseMessage(uint Key, string? value) : base(Key, value)
+        public GetResponseMessage(uint Key, string? value, RequestIdentifier identifier) : base(Key, value)
         {
             Timeout = false;
+            this.Identifier = identifier;
         }
 
         public GetResponseMessage(uint Key, bool timeout) : base(Key, null)
@@ -154,17 +165,21 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetNodeListMessage : NodeMessage
     {
-        public GetNodeListMessage(uint id) : base(id)
+        public RequestIdentifier Identifier { get; private set; }
+        public GetNodeListMessage(uint id, RequestIdentifier identifier = RequestIdentifier.NONE) : base(id)
         {
+            Identifier = identifier;
         }
     }
 
     internal class GetNodeListResponseMessage : NodeMessage
     {
+        public RequestIdentifier Identifier { get; private set; }
         public SortedSet<uint> Nodes { get; private set; }
-        public GetNodeListResponseMessage(uint id, SortedSet<uint> nodes) : base(id)
+        public GetNodeListResponseMessage(uint id, SortedSet<uint> nodes, RequestIdentifier identifier) : base(id)
         {
             this.Nodes = nodes;
+            Identifier = identifier;
         }
     }
 

@@ -1,38 +1,166 @@
 ﻿using Akka.Actor;
 using MathNet.Numerics.Random;
+using System.Drawing;
+using System.Globalization;
 using static DistributedKeyValueStore.NET.Constants;
+using static System.Console;
 
 namespace DistributedKeyValueStore.NET
 {
     internal class SuperMain
     {
+
+        //Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
         static void Main(string[] args)
         {
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
+
+            //Menu();
+
             Test();
         }
 
         static void Menu()
         {
+            //Varibili per il menu
             uint menuChoice;
             bool stop = false;
+            ConsoleColor coloreMenu = ConsoleColor.Blue;
+
+            //Variabili per il funzioanamento della rete
+            List<uint> nodi = new();
+            List<uint> clients = new();
+
+            // Creazione contenitore per gli actors
+            ActorSystem system = ActorSystem.Create("povoland");
+
+            PrintHeader("*** Distributed KeyValue Store with Akka.NET ***", "Simone Marrocco & Stefano Faccio");
+            WriteLine();
 
             while (!stop)
             {
-                Console.WriteLine("Menu:");
-                //TODO WRITE MENU
-                Console.WriteLine("0) Exit");
+                ForegroundColor = coloreMenu;
+                WriteLine("Menu:");
+                ForegroundColor = ConsoleColor.Gray;
+                WriteLine("0) Exit");
+                WriteLine("1) Get key");
+                WriteLine("2) Update key");
+                WriteLine("3) Join network");
+                WriteLine("3) Leave network");
+                WriteLine("4) Create new node");
+                WriteLine("5) Create new client");
+                WriteLine("6) See network overview");
+
                 do
                 {
-                    Console.Write("Scegli un'opzione: ");
-                } while (!UInt32.TryParse(Console.ReadLine(), out menuChoice));
+                    ForegroundColor = coloreMenu;
+                    Write("Select an option: ");
+                    ForegroundColor = ConsoleColor.Gray;
+                } while (!UInt32.TryParse(ReadLine(), out menuChoice));
                     
 
                 switch (menuChoice) { 
                     case 0:
                         stop = true;
                         break;
+                    case 1:
+                        //Get
+                        //client.Tell(new GetMessage(6));
+                        break;
+                    case 4:
+                        uint newNodeId;
+                        uint nodeToAskId;
+                        string str;
+
+                        do
+                        {
+                            Write("Insert new node Id (for default just press enter): ");
+                            str = ReadLine() ?? "";
+
+                            if(str.Trim() == "")
+                            {
+                                newNodeId = nodi.Count > 0 ? nodi.Max() + 10 : 0;
+                                break;
+                            }
+                        } while (!UInt32.TryParse(str, out newNodeId));
+
+                        do
+                        {
+                            Write("Insert the node Id to ask the list of nodes (for random node just press enter): ");
+                            str = ReadLine() ?? "";
+
+                            if (str.Trim() == "")
+                            {
+                                nodeToAskId = nodi.Count > 0 ? nodi[myMersenneTwister.Next(nodi.Count)] : newNodeId;
+                                break;
+                            }
+                        } while (!UInt32.TryParse(ReadLine(), out nodeToAskId));
+
+                        WriteLine($"Create new node with id {newNodeId} and ask to node {nodeToAskId} for info\n");
+
+                        nodi.Add(newNodeId);
+                        system.ActorOf<Node>("node" + newNodeId.ToString()).Tell(new StartMessage(newNodeId, nodeToAskId));
+
+                        Thread.Sleep(500);
+
+                        WriteLine();
+
+                        break;
+                    default:
+                        Clear();
+                        break;
                 }
             }
+        }
+
+        static void PrintHeader(string title, string subtitle, ConsoleColor backgroundColor = ConsoleColor.DarkBlue)
+        {
+            //Imposto il titolo
+            Title = "Distributed KeyValue Store with Akka.NET";
+
+            //Imposto il colore di background
+            BackgroundColor = backgroundColor;
+
+            char hor = '═';
+            char ver = '║';
+            int myWindowWidth = WindowWidth - 1;
+
+            string start = "╔" + new string(hor, (myWindowWidth - 2)) + "╗";
+            string end = "╚" + new string(hor, (myWindowWidth - 2)) + "╝";
+            string newLine = ver + new string(' ', (myWindowWidth - 2)) + ver;
+            
+            string preTitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - title.Length - 2) / 2));
+            string preSubtitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - subtitle.Length - 2) / 2));
+            string postTitle = new string(' ', (int)Math.Floor((double)(myWindowWidth - title.Length - 2) / 2)) + ver;
+            string postSubtitle = new string(' ', (int)Math.Floor((double)(myWindowWidth - subtitle.Length - 2) / 2)) + ver;
+
+            WriteLine(start);
+            WriteLine(newLine);
+            WriteLine(newLine);
+            WriteLine(newLine);
+            WriteLine(newLine);
+
+            Write(preTitle);
+            ForegroundColor = ConsoleColor.White;
+            Write(title);
+            ForegroundColor = ConsoleColor.Gray;
+            WriteLine(postTitle);
+            WriteLine(newLine);
+
+            Write(preSubtitle);
+            ForegroundColor = ConsoleColor.White;
+            Write(subtitle);
+            ForegroundColor = ConsoleColor.Gray;
+            WriteLine(postSubtitle);
+
+            WriteLine(newLine);
+            WriteLine(newLine);
+            WriteLine(newLine);
+            WriteLine(newLine);
+            WriteLine(end);
+
+            ResetColor();
         }
 
         static void Test()
@@ -40,9 +168,9 @@ namespace DistributedKeyValueStore.NET
             //Numero di attori iniziali
             const uint NATTORI = 7;
 
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("Startup: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("Startup: ");
+            ResetColor();
 
             // Creazione contenitore per gli actors
             ActorSystem system = ActorSystem.Create("povoland");
@@ -55,9 +183,9 @@ namespace DistributedKeyValueStore.NET
             //------------------------------------------------------------------------------------------
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nFirst actors: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nFirst actors: ");
+            ResetColor();
 
             for (uint i = 0; i < (NATTORI > N ? N : NATTORI); i++)
             {
@@ -74,29 +202,29 @@ namespace DistributedKeyValueStore.NET
 
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nGet Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
             client.Tell(new GetMessage(6));
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nUpdate Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nUpdate Message: ");
+            ResetColor();
             client.Tell(new UpdateMessage(6, "Comunisti con il Rolex!"));
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nGet Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
             client.Tell(new GetMessage(6));
 
             //-------------------------------------------------------------
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nAdd actors: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nAdd actors: ");
+            ResetColor();
 
             for (uint i = (uint)attori.Count; i < NATTORI - 2; i++)
             {
@@ -112,35 +240,35 @@ namespace DistributedKeyValueStore.NET
             //---------------------------------------------------------------------
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nUpdate Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nUpdate Message: ");
+            ResetColor();
             client.Tell(new UpdateMessage(42, "H24 In gaina!"));
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nUpdate Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nUpdate Message: ");
+            ResetColor();
             client.Tell(new UpdateMessage(26, "Alla canna del gas!"));
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nGet Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
             client.Tell(new GetMessage(42));
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nGet Message: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
             client.Tell(new GetMessage(26));
 
             //----------------------------------------------------------------------
 
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nAdd actors: ");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nAdd actors: ");
+            ResetColor();
 
             for (uint i = (uint)attori.Count; i < NATTORI; i++)
             {
@@ -157,15 +285,15 @@ namespace DistributedKeyValueStore.NET
 
             //Test
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nStart Test:");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nStart Test:");
+            ResetColor();
             foreach (var att in attori)
             {
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
             }
-            Console.WriteLine(client.Path);
+            WriteLine(client.Path);
             client.Tell(new TestMessage());
 
             //------------------------------------------------------------------------
@@ -173,9 +301,9 @@ namespace DistributedKeyValueStore.NET
             //Stop Node
             Thread.Sleep(500);
             int actorToStop = myMersenneTwister.Next(0, attori.Count);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nStop Node:");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nStop Node:");
+            ResetColor();
             attori[actorToStop].Tell(new StopMessage((uint)actorToStop));
             //attori.RemoveAt(actorToStop);
 
@@ -183,18 +311,18 @@ namespace DistributedKeyValueStore.NET
 
             //Test
             Thread.Sleep(500);
-            Console.ForegroundColor = ConsoleColor.Blue;
-            Console.WriteLine("\nStart Test:");
-            Console.ResetColor();
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nStart Test:");
+            ResetColor();
             foreach (var att in attori)
             {
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
             }
-            Console.WriteLine(client.Path);
+            WriteLine(client.Path);
             client.Tell(new TestMessage());
 
-            Console.ReadKey();
+            ReadKey();
         }
     }
 }
