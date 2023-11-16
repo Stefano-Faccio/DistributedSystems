@@ -61,17 +61,29 @@ namespace DistributedKeyValueStore.NET
         { }
     }
 
+    public enum GetIdentifier
+    {
+        NONE,
+        SHUTDOWN,
+        RECOVERY
+    };
+
     internal class GetMessage : KeyMessage
     {
-        public GetMessage(uint Key) : base(Key) { }
+        public GetIdentifier Identifier { get; private set; }
+        public GetMessage(uint Key, GetIdentifier identifier = GetIdentifier.NONE) : base(Key) { 
+            this.Identifier = identifier;
+        }
     }
 
     internal class GetResponseMessage : KeyValueMessage
     {
+        public GetIdentifier Identifier { get; private set; }
         public bool Timeout { get; private set; }
-        public GetResponseMessage(uint Key, string? value) : base(Key, value)
+        public GetResponseMessage(uint Key, string? value, GetIdentifier identifier) : base(Key, value)
         {
             Timeout = false;
+            this.Identifier = identifier;
         }
 
         public GetResponseMessage(uint Key, bool timeout) : base(Key, null)

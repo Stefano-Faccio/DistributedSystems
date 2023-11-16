@@ -25,7 +25,7 @@ namespace DistributedKeyValueStore.NET
             int getID = myMersenneTwister.Next();
 
             //Alloco lo spazio e salvo Key e nome del nodo che ha fatto la richiesta
-            if (!getRequestsData.TryAdd(getID, new GetDataStructure(message.Key, Sender.Path.Name)))
+            if (!getRequestsData.TryAdd(getID, new GetDataStructure(message.Key, Sender.Path.Name, message.Identifier)))
                 throw new Exception("Errors adding item to getRequestsData Dictionary");
 
             //Imposto un timer per inviare una risposta di timeout al client in caso di non raggiungimento del quorum
@@ -97,7 +97,7 @@ namespace DistributedKeyValueStore.NET
                 if (returnValue is not null && getRequestsData.Remove(message.GetId, out GetDataStructure? getRequestDataRemoved))
                 {
                     //Invio la risposta al nodo
-                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, returnValue));
+                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, returnValue, getRequestDataRemoved.Identifier));
 
                     if (sendDebug)
                         Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
