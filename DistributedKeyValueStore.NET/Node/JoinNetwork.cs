@@ -63,7 +63,7 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} sended NODE LIST to {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
 
             //Ritorno la lista dei nodi
-            Sender.Tell(new GetNodeListResponseMessage(Id, new SortedSet<uint>(nodes)), Self);
+            Sender.Tell(new GetNodeListResponseMessage(Id, new SortedSet<uint>(nodes), message.Identifier), Self);
         }
 
         private void GetNodeListResponse(GetNodeListResponseMessage message)
