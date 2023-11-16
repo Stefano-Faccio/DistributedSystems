@@ -125,7 +125,7 @@ namespace DistributedKeyValueStore.NET
                 case CrashMessage message:
                     onCrash(message);
                     break;
-                case RecoverMessage message:
+                case RecoveryMessage message:
                     onRecovery(message);
                     break;
                 case TestMessage message:

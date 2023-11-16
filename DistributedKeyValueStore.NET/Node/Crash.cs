@@ -14,11 +14,13 @@ namespace DistributedKeyValueStore.NET
             active = false;
         }
 
-        protected void onRecovery(RecoverMessage message)
+        protected void onRecovery(RecoveryMessage message)
         {
             if (receiveDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} is recoverying...");
+
+            Context.ActorSelection($"/user/node{message.NodeToContactForList}").Tell(new GetNodeListMessage(this.Id));
         }
     }
 }

@@ -234,9 +234,13 @@ namespace DistributedKeyValueStore.NET
         public CrashMessage(uint id) : base(id) { }
     }
 
-    internal class RecoverMessage : NodeMessage
+    internal class RecoveryMessage : NodeMessage
     {
-        public RecoverMessage(uint id) : base(id) { }
+        public uint NodeToContactForList { get; private set; }
+        public RecoveryMessage(uint id, uint NodeToContactForList) : base(id)
+        {
+            this.NodeToContactForList = NodeToContactForList;
+        }
     }
 
     internal class TimeoutGetMessage : ReadMessage
