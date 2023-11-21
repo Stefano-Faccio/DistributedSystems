@@ -1,6 +1,4 @@
 ﻿using Akka.Actor;
-using MathNet.Numerics.Random;
-using System.Drawing;
 using System.Globalization;
 using static DistributedKeyValueStore.NET.Constants;
 using static System.Console;
@@ -58,9 +56,10 @@ namespace DistributedKeyValueStore.NET
                     Write("Select an option: ");
                     ForegroundColor = ConsoleColor.Gray;
                 } while (!UInt32.TryParse(ReadLine(), out menuChoice));
-                    
 
-                switch (menuChoice) { 
+
+                switch (menuChoice)
+                {
                     case 0:
                         stop = true;
                         break;
@@ -78,7 +77,7 @@ namespace DistributedKeyValueStore.NET
                             Write("Insert new node Id (for default just press enter): ");
                             str = ReadLine() ?? "";
 
-                            if(str.Trim() == "")
+                            if (str.Trim() == "")
                             {
                                 newNodeId = nodi.Count > 0 ? nodi.Max() + 10 : 0;
                                 break;
@@ -129,7 +128,7 @@ namespace DistributedKeyValueStore.NET
             string start = "╔" + new string(hor, (myWindowWidth - 2)) + "╗";
             string end = "╚" + new string(hor, (myWindowWidth - 2)) + "╝";
             string newLine = ver + new string(' ', (myWindowWidth - 2)) + ver;
-            
+
             string preTitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - title.Length - 2) / 2));
             string preSubtitle = ver + new string(' ', (int)Math.Ceiling((double)(myWindowWidth - subtitle.Length - 2) / 2));
             string postTitle = new string(' ', (int)Math.Floor((double)(myWindowWidth - title.Length - 2) / 2)) + ver;
@@ -167,6 +166,7 @@ namespace DistributedKeyValueStore.NET
         {
             //Numero di attori iniziali
             const uint NATTORI = 7;
+            const int NCLIENTS = 3;
 
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("Startup: ");
@@ -176,7 +176,11 @@ namespace DistributedKeyValueStore.NET
             ActorSystem system = ActorSystem.Create("povoland");
 
             //Cliente singolo
-            IActorRef client = system.ActorOf<Client>("client");
+            List<IActorRef> clients = new();
+            for (int i = 0; i < NCLIENTS; i++)
+            {
+                clients.Add(system.ActorOf<Client>("client_" + i));
+            }
             //Lista attori
             List<IActorRef> attori = new List<IActorRef>((int)NATTORI);
 
@@ -205,19 +209,51 @@ namespace DistributedKeyValueStore.NET
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nGet Message: ");
             ResetColor();
-            client.Tell(new GetMessage(6));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
 
             Thread.Sleep(500);
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nUpdate Message: ");
             ResetColor();
-            client.Tell(new UpdateMessage(6, "Comunisti con il Rolex!"));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new UpdateMessage(6, "Comunisti con il Rolex!"));
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
 
             Thread.Sleep(500);
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nGet Message: ");
             ResetColor();
-            client.Tell(new GetMessage(6));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
+
+            Thread.Sleep(500);
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nUpdate Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new UpdateMessage(6, "Forza Napoli"));
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
+
+            Thread.Sleep(500);
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
+            ForegroundColor = ConsoleColor.Blue;
+            WriteLine("\nGet Message: ");
+            ResetColor();
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(6));
 
             //-------------------------------------------------------------
 
@@ -243,25 +279,25 @@ namespace DistributedKeyValueStore.NET
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nUpdate Message: ");
             ResetColor();
-            client.Tell(new UpdateMessage(42, "H24 In gaina!"));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new UpdateMessage(42, "H24 In gaina!"));
 
             Thread.Sleep(500);
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nUpdate Message: ");
             ResetColor();
-            client.Tell(new UpdateMessage(26, "Alla canna del gas!"));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new UpdateMessage(26, "Alla canna del gas!"));
 
             Thread.Sleep(500);
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nGet Message: ");
             ResetColor();
-            client.Tell(new GetMessage(42));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(42));
 
             Thread.Sleep(500);
             ForegroundColor = ConsoleColor.Blue;
             WriteLine("\nGet Message: ");
             ResetColor();
-            client.Tell(new GetMessage(26));
+            clients[Constants.myMersenneTwister.Next(NCLIENTS)].Tell(new GetMessage(26));
 
             //----------------------------------------------------------------------
 
@@ -293,8 +329,11 @@ namespace DistributedKeyValueStore.NET
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
             }
-            WriteLine(client.Path);
-            client.Tell(new TestMessage());
+            foreach (var client in clients)
+            {
+                WriteLine(client.Path);
+                client.Tell(new TestMessage());
+            }
 
             //------------------------------------------------------------------------
 
@@ -319,8 +358,11 @@ namespace DistributedKeyValueStore.NET
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
             }
-            WriteLine(client.Path);
-            client.Tell(new TestMessage());
+            foreach (var client in clients)
+            {
+                WriteLine(client.Path);
+                client.Tell(new TestMessage());
+            }
 
             ReadKey();
         }
