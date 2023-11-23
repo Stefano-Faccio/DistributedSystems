@@ -261,6 +261,11 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class BackOnlineMessage : NodeMessage
+    {
+        public BackOnlineMessage(uint id) : base(id) { }
+    }
+
     internal class TimeoutGetMessage : ReadMessage
     {
         public IActorRef Sender { get; private set; }

@@ -70,7 +70,7 @@ namespace DistributedKeyValueStore.NET
                 }
             }
 
-
+            Timers.StartSingleTimer($"Recovery{myMersenneTwister.Next()}", new BackOnlineMessage(this.Id), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
         }
 
         protected void GetResponseRecovery(GetResponseMessage message)
@@ -82,6 +82,15 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} response GET KEY {message.Key} value {message.Value}");
 
             data.Add(message.Key, message.Value);
+        }
+
+        protected void BackOnline(BackOnlineMessage message)
+        {
+            if (receiveDebug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} is back online");
+
+            crashed = false;
         }
     }
 }

@@ -33,18 +33,24 @@ namespace DistributedKeyValueStore.NET
         {
             if (crashed)
             {
-                if (msg is RecoveryMessage r_msg)
+                if (
+                    msg is not RecoveryMessage r_msg &&
+                    (msg is not GetNodeListResponseMessage nl_msg || nl_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    (msg is not GetKeysListResponseMessage kl_msg || kl_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    (msg is not GetResponseMessage gr_msg || gr_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    msg is not BackOnlineMessage b_msg
+                )
                 {
-                    onRecovery(r_msg);
+                    if (generalDebug)
+                        lock (Console.Out)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"{Self.Path.Name} is crashed and cannot receive a message");
+                            Console.ResetColor();
+                        }
+                    return;
                 }
-                else if (generalDebug)
-                    lock (Console.Out)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"{Self.Path.Name} is crashed and cannot receive a message");
-                        Console.ResetColor();
-                    }
-                return;
+                // else the message is for the recovery
             }
 
             switch (msg)
@@ -164,6 +170,9 @@ namespace DistributedKeyValueStore.NET
                     break;
                 case RecoveryMessage message:
                     onRecovery(message);
+                    break;
+                case BackOnlineMessage message:
+                    BackOnline(message);
                     break;
                 case TestMessage message:
                     Test(message);
