@@ -11,11 +11,13 @@ namespace DistributedKeyValueStore.NET
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} has crashed");
 
-            active = false;
+            crashed = true;
         }
 
         protected void onRecovery(RecoveryMessage message)
         {
+            if (!crashed) return;
+
             if (receiveDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} is recoverying...");
@@ -67,6 +69,8 @@ namespace DistributedKeyValueStore.NET
                     Context.ActorSelection($"/user/node{Sender.Path.Name}").Tell(new GetMessage(this.Id));
                 }
             }
+
+
         }
 
         protected void GetResponseRecovery(GetResponseMessage message)

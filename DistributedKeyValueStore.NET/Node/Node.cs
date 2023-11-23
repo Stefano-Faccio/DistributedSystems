@@ -16,6 +16,7 @@ namespace DistributedKeyValueStore.NET
 
         //Booleano che indica se il nodo è attivo ossia fa parte attivamente della rete
         bool active = false;
+        bool crashed = false;
 
         //Convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
@@ -30,9 +31,13 @@ namespace DistributedKeyValueStore.NET
 
         protected override void OnReceive(object msg)
         {
-            if (!active)
+            if (crashed)
             {
-                if (generalDebug)
+                if (msg is RecoveryMessage r_msg)
+                {
+                    onRecovery(r_msg);
+                }
+                else if (generalDebug)
                     lock (Console.Out)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
