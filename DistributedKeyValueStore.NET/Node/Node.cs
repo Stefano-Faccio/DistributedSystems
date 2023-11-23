@@ -91,7 +91,17 @@ namespace DistributedKeyValueStore.NET
                     GetKeysList(message);
                     break;
                 case GetKeysListResponseMessage message:
-                    GetKeysListResponse(message);
+                    switch (message.Identifier)
+                    {
+                        case RequestIdentifier.NONE:
+                            GetKeysListResponse(message);
+                            break;
+                        case RequestIdentifier.RECOVERY:
+                            GetKeysListResponseRecovery(message);
+                            break;
+                        default:
+                            throw new Exception("Not yet implemented!");
+                    }
                     break;
                 case BulkReadResponseMessage message:
                     BulkReadResponse(message);

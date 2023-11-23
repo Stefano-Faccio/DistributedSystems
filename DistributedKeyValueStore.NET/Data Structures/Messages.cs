@@ -70,7 +70,8 @@ namespace DistributedKeyValueStore.NET
     internal class GetMessage : KeyMessage
     {
         public RequestIdentifier Identifier { get; private set; }
-        public GetMessage(uint Key, RequestIdentifier identifier = RequestIdentifier.NONE) : base(Key) { 
+        public GetMessage(uint Key, RequestIdentifier identifier = RequestIdentifier.NONE) : base(Key)
+        {
             this.Identifier = identifier;
         }
     }
@@ -191,10 +192,12 @@ namespace DistributedKeyValueStore.NET
     }
     internal class GetKeysListResponseMessage : Message
     {
+        public RequestIdentifier Identifier { get; private set; }
         public List<uint> KeysList { get; private set; }
-        public GetKeysListResponseMessage(List<uint> KeysList)
+        public GetKeysListResponseMessage(List<uint> KeysList, RequestIdentifier identifier)
         {
             this.KeysList = KeysList;
+            Identifier = identifier;
         }
     }
     internal class BulkReadMessage : Message

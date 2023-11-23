@@ -115,6 +115,11 @@
             return str;
         }
 
+        public bool ContainsKey(uint k)
+        {
+            return dictionary.ContainsKey(k);
+        }
+
         public static void Main(string[] args)
         {
             Collection coll = new Collection();
