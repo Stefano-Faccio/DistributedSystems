@@ -76,16 +76,7 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} received GET NODE LIST RESPONSE from {Sender.Path.Name} => Value:[{string.Join(",", nodes)}]");
 
             //Prendo il prossimo nodo dopo di me
-            uint nextNode = 0;
-            {
-                ImmutableList<uint> tmpList = nodes.ToImmutableList();
-                for (uint i = 0; i < tmpList.Count; i++)
-                    if (tmpList[(int)i] > this.Id)
-                    {
-                        nextNode = i;
-                        break;
-                    }
-            }
+            uint nextNode = NextNode();
 
             //Mando un messaggio al prossimo nodo per prendere tutte le key che tiene
             Context.ActorSelection($"/user/node{nextNode}").Tell(new GetKeysListMessage(this.Id), Self);
@@ -106,13 +97,7 @@ namespace DistributedKeyValueStore.NET
                     Console.WriteLine($"{Self.Path.Name} added node{message.Id}");
 
             //Elimino tutti gli elementi di cui non sono più responsabile
-            //Per ogni chiave che ho
-            data.KeyCollection().ForEach(key =>
-            {
-                //Prendo tutti i nodi che hanno quella chiave e controllo se "io" sono uno di quelli
-                if (!FindNodesThatKeepKey(key).Any(node => node == this.Id))
-                    data.Remove(key);//Se non dovrei avere questa chiave la rimuovo dal db
-            });
+            RemoveElementsNoResponsible();
         }
 
         private void GetKeysList(GetKeysListMessage message)
@@ -130,7 +115,7 @@ namespace DistributedKeyValueStore.NET
             });
 
             //Restituisco la lista di chiavi
-            Sender.Tell(new GetKeysListResponseMessage(keysToReturn), Self);
+            Sender.Tell(new GetKeysListResponseMessage(keysToReturn, message.Identifier), Self);
 
             if (sendDebug)
                 lock (Console.Out)

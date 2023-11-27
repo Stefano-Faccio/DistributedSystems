@@ -166,10 +166,10 @@ namespace DistributedKeyValueStore.NET
                     OnPreWrite(message);
                     break;
                 case CrashMessage message:
-                    onCrash(message);
+                    OnCrash(message);
                     break;
                 case RecoveryMessage message:
-                    onRecovery(message);
+                    OnRecovery(message);
                     break;
                 case BackOnlineMessage message:
                     BackOnline(message);

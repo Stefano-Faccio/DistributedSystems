@@ -186,8 +186,10 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetKeysListMessage : NodeMessage
     {
-        public GetKeysListMessage(uint id) : base(id)
+        public RequestIdentifier Identifier { get; private set; }
+        public GetKeysListMessage(uint id, RequestIdentifier identifier = RequestIdentifier.NONE) : base(id)
         {
+            Identifier = identifier;
         }
     }
     internal class GetKeysListResponseMessage : Message

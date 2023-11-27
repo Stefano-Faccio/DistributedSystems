@@ -5,7 +5,7 @@ namespace DistributedKeyValueStore.NET
 {
     internal partial class Node : UntypedActor, IWithTimers
     {
-        protected void onCrash(CrashMessage message)
+        protected void OnCrash(CrashMessage message)
         {
             if (receiveDebug)
                 lock (Console.Out)
@@ -14,15 +14,17 @@ namespace DistributedKeyValueStore.NET
             crashed = true;
         }
 
-        protected void onRecovery(RecoveryMessage message)
+        protected void OnRecovery(RecoveryMessage message)
         {
-            if (!crashed) return;
+            if (!crashed)
+                throw new Exception("Node not crashed cannot recover!");
 
-            if (receiveDebug)
+            if (generalDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} is recoverying...");
-
-            Context.ActorSelection($"/user/node{message.NodeToContactForList}").Tell(new GetNodeListMessage(this.Id));
+                    Console.WriteLine($"{Self.Path.Name} is back online and recoverying...");
+            
+            //Chiedo la lista di nodi attivi
+            Context.ActorSelection($"/user/node{message.NodeToContactForList}").Tell(new GetNodeListMessage(this.Id, RequestIdentifier.RECOVERY));
 
             if (sendDebug)
                 lock (Console.Out)
@@ -31,65 +33,67 @@ namespace DistributedKeyValueStore.NET
 
         protected void RecoveryGetNodeListResponse(GetNodeListResponseMessage message)
         {
+            if (receiveDebug)
+                lock (Console.Out)
+                    Console.WriteLine($"{Self.Path.Name} response GET NODE LIST CRASH => Values:[{string.Join(",", message.Nodes)}]");
+
+            //Sovrascrivo la lista dei nodi che ho
+            nodes = new(message.Nodes);
+
+            //Elimino dal mio db tutte le chiavi di cui non sono più responsabile
+            RemoveElementsNoResponsible();
+
+            //Prendo il nodo successiovo e quello precedente
+            uint prev_node = PreviousNode();
+            uint next_node = NextNode();
+
+            //Domando le chiavi al nodo precedente ed a quello successivo 
+            Context.ActorSelection($"/user/node{prev_node}").Tell(new GetKeysListMessage(this.Id, RequestIdentifier.RECOVERY));
+            Context.ActorSelection($"/user/node{next_node}").Tell(new GetKeysListMessage(this.Id, RequestIdentifier.RECOVERY));
+
             if (sendDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} response GET NODE LIST");
-
-            var new_nodes = message.Nodes;
-            this.nodes = new_nodes;
-            uint prev_node = this.Id;
-            uint next_node = this.Id;
-            foreach (var n in this.nodes)
-            {
-                if (n < this.Id && n > prev_node) prev_node = n;
-                if (n > this.Id && n < next_node) next_node = n;
-            }
-
-            Context.ActorSelection($"/user/node{prev_node}").Tell(new GetKeysListMessage(this.Id));
-            Context.ActorSelection($"/user/node{next_node}").Tell(new GetKeysListMessage(this.Id));
-
-            if (sendDebug)
-                lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} asking to {prev_node} and {next_node} for my keys");
+                    Console.WriteLine($"{Self.Path.Name} sended GET KEYS LIST to Node{prev_node} and Node{next_node}");
         }
 
         protected void GetKeysListResponseRecovery(GetKeysListResponseMessage message)
         {
-            if (sendDebug)
+            if (receiveDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} response GET KEY LIST");
+                    Console.WriteLine($"{Self.Path.Name} response GET KEY LIST => Values:[{string.Join(",", message.KeysList)}]");
 
-            foreach (var k in message.KeysList)
+            //Faccio una get di tutte le chiavi che non ho
+            message.KeysList.ForEach(key =>
             {
-                if (!this.data.ContainsKey(k))
+                if(!data.ContainsKey(key))
                 {
                     if (sendDebug)
                         lock (Console.Out)
-                            Console.WriteLine($"{Self.Path.Name} asking to {Sender.Path.Name} new key value: {k}");
-                    Context.ActorSelection($"/user/node{Sender.Path.Name}").Tell(new GetMessage(this.Id));
+                            Console.WriteLine($"{Self.Path.Name} sended GET KEY to {Sender.Path.Name} => Value:{key}");
+                    Sender.Tell(new GetMessage(this.Id, RequestIdentifier.RECOVERY));
                 }
-            }
+            });
 
             Timers.StartSingleTimer($"Recovery{myMersenneTwister.Next()}", new BackOnlineMessage(this.Id), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
         }
 
         protected void GetResponseRecovery(GetResponseMessage message)
         {
-            if (message.Value == null) return;
-
-            if (sendDebug)
+            if (receiveDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} response GET KEY {message.Key} value {message.Value}");
 
-            data.Add(message.Key, message.Value);
+            if(message.Value is not null)
+                data.Add(message.Key, message.Value);
         }
 
         protected void BackOnline(BackOnlineMessage message)
         {
-            if (receiveDebug)
+            if (generalDebug)
                 lock (Console.Out)
                     Console.WriteLine($"{Self.Path.Name} is back online");
 
+            //Riprendo ad elaborare i messaggi
             crashed = false;
         }
     }
