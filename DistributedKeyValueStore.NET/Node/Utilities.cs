@@ -1,6 +1,8 @@
 ﻿using Akka.Actor;
+using Akka.Util;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -52,6 +54,32 @@ namespace DistributedKeyValueStore.NET
                 nodesToFind--;
             }
             return returnList;
+        }
+
+        private void RemoveElementsNoResponsible()
+        {
+            //Per ogni chiave che ho
+            data.KeyCollection().ForEach(key =>
+            {
+                //Prendo tutti i nodi che hanno quella chiave e controllo se "io" sono uno di quelli
+                if (!FindNodesThatKeepKey(key).Any(node => node == this.Id))
+                    data.Remove(key);//Se non dovrei avere questa chiave la rimuovo dal db
+            });
+        }
+
+        private uint NextNode()
+        {
+            List<uint> nodesTmp = nodes.ToList();
+            int meIndex = nodesTmp.IndexOf(this.Id);
+           
+            return nodesTmp[(meIndex + 1) % nodesTmp.Count];
+        }
+
+        private uint PreviousNode()
+        {
+            List<uint> nodesTmp = nodes.ToList();
+            int meIndex = nodesTmp.IndexOf(this.Id);
+            return meIndex > 0 ? nodesTmp[meIndex - 1] : nodesTmp[^1];
         }
 
         protected void Test(TestMessage message)
