@@ -70,7 +70,8 @@ namespace DistributedKeyValueStore.NET
     internal class GetMessage : KeyMessage
     {
         public RequestIdentifier Identifier { get; private set; }
-        public GetMessage(uint Key, RequestIdentifier identifier = RequestIdentifier.NONE) : base(Key) { 
+        public GetMessage(uint Key, RequestIdentifier identifier = RequestIdentifier.NONE) : base(Key)
+        {
             this.Identifier = identifier;
         }
     }
@@ -94,7 +95,7 @@ namespace DistributedKeyValueStore.NET
     internal class PreWriteMessage : KeyMessage
     {
         public int UpdateId { get; private set; }
-        public PreWriteMessage(uint Key, int UpdateId) : base(Key) 
+        public PreWriteMessage(uint Key, int UpdateId) : base(Key)
         {
             this.UpdateId = UpdateId;
         }
@@ -119,7 +120,7 @@ namespace DistributedKeyValueStore.NET
             this.Version = version;
         }
     }
-    
+
     internal class UpdateMessage : KeyValueMessage
     {
         public UpdateMessage(uint Key, string? value) : base(Key, value) { }
@@ -128,7 +129,7 @@ namespace DistributedKeyValueStore.NET
     internal class UpdateResponseMessage : KeyValueMessage
     {
         public bool Achieved { get; private set; }
-        public UpdateResponseMessage(uint Key, string? value, bool Achieved) : base(Key, value) 
+        public UpdateResponseMessage(uint Key, string? value, bool Achieved) : base(Key, value)
         {
             this.Achieved = Achieved;
         }
@@ -185,16 +186,20 @@ namespace DistributedKeyValueStore.NET
 
     internal class GetKeysListMessage : NodeMessage
     {
-        public GetKeysListMessage(uint id) : base(id)
+        public RequestIdentifier Identifier { get; private set; }
+        public GetKeysListMessage(uint id, RequestIdentifier identifier = RequestIdentifier.NONE) : base(id)
         {
+            Identifier = identifier;
         }
     }
     internal class GetKeysListResponseMessage : Message
     {
+        public RequestIdentifier Identifier { get; private set; }
         public List<uint> KeysList { get; private set; }
-        public GetKeysListResponseMessage(List<uint> KeysList)
+        public GetKeysListResponseMessage(List<uint> KeysList, RequestIdentifier identifier)
         {
             this.KeysList = KeysList;
+            Identifier = identifier;
         }
     }
     internal class BulkReadMessage : Message
@@ -243,6 +248,26 @@ namespace DistributedKeyValueStore.NET
             this.ValuesList = ValuesList;
         }
     }
+
+    internal class CrashMessage : NodeMessage
+    {
+        public CrashMessage(uint id) : base(id) { }
+    }
+
+    internal class RecoveryMessage : NodeMessage
+    {
+        public uint NodeToContactForList { get; private set; }
+        public RecoveryMessage(uint id, uint NodeToContactForList) : base(id)
+        {
+            this.NodeToContactForList = NodeToContactForList;
+        }
+    }
+
+    internal class BackOnlineMessage : NodeMessage
+    {
+        public BackOnlineMessage(uint id) : base(id) { }
+    }
+
     internal class TimeoutGetMessage : ReadMessage
     {
         public IActorRef Sender { get; private set; }

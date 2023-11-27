@@ -109,6 +109,9 @@ namespace DistributedKeyValueStore.NET
                 //Aggiorno il numero di risposte generiche
                 updateData.Responses++;
 
+                                    //Marco questa risposta come non ignorata
+                    ignored = false;
+
                 //Se la risposta è positiva
                 if(message.Result)
                 {
@@ -118,8 +121,6 @@ namespace DistributedKeyValueStore.NET
 
                     //Aggiungo la versione che ha l'altro nodeo
                     updateData.Versions.Add(message.Version);
-                    //Marco questa risposta come non ignorata
-                    ignored = false;
 
                     //Verifico se posso rispondere al client ed eventualmente rispondo
                     if (updateData.Versions.Count >= WRITE_QUORUM)
@@ -139,6 +140,11 @@ namespace DistributedKeyValueStore.NET
                         updateRequestsData.Remove(message.Key);
                     }
                 }
+                else
+                    if (receiveDebug)
+                    lock (Console.Out)
+                        Console.WriteLine($"{Self.Path.Name} received PREWRITE RESPONSE (NEGATIVE) from {Sender.Path.Name} => Key:{message.Key} Result:{message.Result}");
+
             }
 
             if (ignored && receiveDebug)

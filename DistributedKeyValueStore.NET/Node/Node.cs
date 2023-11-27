@@ -1,10 +1,4 @@
 ﻿using Akka.Actor;
-using Akka.Util.Internal;
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using System.Collections.ObjectModel;
-using System.Numerics;
-using System.Reflection.Metadata.Ecma335;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -22,6 +16,7 @@ namespace DistributedKeyValueStore.NET
 
         //Booleano che indica se il nodo è attivo ossia fa parte attivamente della rete
         bool active = false;
+        bool crashed = false;
 
         //Convenzione nei log:
         //{Chi? - Es. node0} {Cosa? Es. ricevuto/inviato GET/UPDATE} {da/a chi? - Es. node0} => [{ecc}]
@@ -36,6 +31,28 @@ namespace DistributedKeyValueStore.NET
 
         protected override void OnReceive(object msg)
         {
+            if (crashed)
+            {
+                if (
+                    msg is not RecoveryMessage r_msg &&
+                    (msg is not GetNodeListResponseMessage nl_msg || nl_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    (msg is not GetKeysListResponseMessage kl_msg || kl_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    (msg is not GetResponseMessage gr_msg || gr_msg.Identifier != RequestIdentifier.RECOVERY) &&
+                    msg is not BackOnlineMessage b_msg
+                )
+                {
+                    if (generalDebug)
+                        lock (Console.Out)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"{Self.Path.Name} is crashed and cannot receive a message");
+                            Console.ResetColor();
+                        }
+                    return;
+                }
+                // else the message is for the recovery
+            }
+
             switch (msg)
             {
                 case TimeoutGetMessage message:
@@ -69,13 +86,13 @@ namespace DistributedKeyValueStore.NET
                     GetNodeList(message);
                     break;
                 case GetNodeListResponseMessage message:
-                    switch(message.Identifier)
+                    switch (message.Identifier)
                     {
                         case RequestIdentifier.NONE:
                             GetNodeListResponse(message);
                             break;
                         case RequestIdentifier.RECOVERY:
-                            //
+                            RecoveryGetNodeListResponse(message);
                             break;
                         default:
                             throw new Exception("Not yet implemented!");
@@ -85,7 +102,17 @@ namespace DistributedKeyValueStore.NET
                     GetKeysList(message);
                     break;
                 case GetKeysListResponseMessage message:
-                    GetKeysListResponse(message);
+                    switch (message.Identifier)
+                    {
+                        case RequestIdentifier.NONE:
+                            GetKeysListResponse(message);
+                            break;
+                        case RequestIdentifier.RECOVERY:
+                            GetKeysListResponseRecovery(message);
+                            break;
+                        default:
+                            throw new Exception("Not yet implemented!");
+                    }
                     break;
                 case BulkReadResponseMessage message:
                     BulkReadResponse(message);
@@ -115,7 +142,7 @@ namespace DistributedKeyValueStore.NET
                     OnGet(message);
                     break;
                 case GetResponseMessage message:
-                    switch(message.Identifier)
+                    switch (message.Identifier)
                     {
                         case RequestIdentifier.NONE:
                             break;
@@ -123,7 +150,7 @@ namespace DistributedKeyValueStore.NET
                             GetResponseShutdown(message);
                             break;
                         case RequestIdentifier.RECOVERY:
-                            //GetResponseRecovery(message);
+                            GetResponseRecovery(message);
                             break;
                         default:
                             throw new Exception("Not yet implemented!");
@@ -137,6 +164,15 @@ namespace DistributedKeyValueStore.NET
                     return;
                 case PreWriteMessage message:
                     OnPreWrite(message);
+                    break;
+                case CrashMessage message:
+                    OnCrash(message);
+                    break;
+                case RecoveryMessage message:
+                    OnRecovery(message);
+                    break;
+                case BackOnlineMessage message:
+                    BackOnline(message);
                     break;
                 case TestMessage message:
                     Test(message);
