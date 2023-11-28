@@ -31,7 +31,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
             "Hello, World!",
             "It's not a bug, it's a feature.",
             "There are 10 types of people in the world: those who understand binary and those who don't.",
-            "15 e 18 quanto fa?",
+            "Uomini forti destini forti, uomini deboli destini deboli",
             "Troppo spesso la saggezza è la prudenza più stagnante."
         };
 
@@ -99,7 +99,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
                     WriteLine("\nGet Message: ");
                     ResetColor();
                 }
-                clients[myMersenneTwister.Next(clients.Count)].Tell(new GetMessage((uint)myMersenneTwister.Next(nodi.Count * 11)));
+                clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage((uint)myMersenneTwister.Next(nodi.Count * 11)));
 
                 Thread.Sleep(100);
             }
@@ -123,7 +123,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
                     ResetColor();
                 }
                 chiaviInserite.Add((uint)myMersenneTwister.Next(nodi.Count * 10));
-                clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateMessage(chiaviInserite.Last(), citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(chiaviInserite.Last(), citazioni[myMersenneTwister.Next(citazioni.Count)]));
                 Thread.Sleep(100);
             }
 
@@ -145,7 +145,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
                     WriteLine("\nGet Message: ");
                     ResetColor();
                 }
-                clients[myMersenneTwister.Next(clients.Count)].Tell(new GetMessage(chiaviInserite[i]));
+                clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage(chiaviInserite[i]));
                 Thread.Sleep(100);
             }
 
@@ -177,8 +177,8 @@ namespace DistributedKeyValueStore.NET.UserInterface
             {
                 uint key = chiaviInserite[myMersenneTwister.Next(chiaviInserite.Count)];
 
-                clients[0].Tell(new UpdateMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
-                clients[1].Tell(new UpdateMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[0].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[1].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
             }
             Thread.Sleep(100);
             foreach (var att in nodi)
@@ -199,8 +199,8 @@ namespace DistributedKeyValueStore.NET.UserInterface
             {
                 uint key = chiaviInserite[myMersenneTwister.Next(chiaviInserite.Count)];
 
-                clients[0].Tell(new UpdateMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
-                clients[1].Tell(new UpdateMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[0].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[1].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
             }
             Thread.Sleep(100);
             foreach (var att in nodi)

@@ -5,7 +5,8 @@ namespace DistributedKeyValueStore.NET
     internal static class Constants
     {
         //myMersenneTwister per i numeri casuali
-        public static MersenneTwister myMersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+        //public static MersenneTwister myMersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
+        public static MersenneTwister myMersenneTwister = new(Guid.NewGuid().GetHashCode());
 
         public static readonly int N = 3;
         public static readonly int READ_QUORUM = 2;

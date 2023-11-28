@@ -1,4 +1,5 @@
 ﻿using Akka.Actor;
+using DistributedKeyValueStore.NET.UserInterface;
 using System.Globalization;
 using static DistributedKeyValueStore.NET.Constants;
 using static System.Console;
@@ -14,7 +15,7 @@ namespace DistributedKeyValueStore.NET
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
-            Test();
+            new TestCases();
         }
 
         static void Test()

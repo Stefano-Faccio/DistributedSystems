@@ -1,5 +1,6 @@
 ﻿using Akka.Actor;
 using MathNet.Numerics.Random;
+using System.Linq;
 using static DistributedKeyValueStore.NET.Constants;
 
 namespace DistributedKeyValueStore.NET
@@ -7,7 +8,7 @@ namespace DistributedKeyValueStore.NET
     internal class Client : UntypedActor
     {
         //Lista degli altri nodi
-        SortedSet<uint> nodes = new SortedSet<uint>();
+        SortedSet<uint> nodes = new();
 
         protected override void PreStart()
         {
@@ -50,11 +51,14 @@ namespace DistributedKeyValueStore.NET
                 }
         }
 
-        protected void DoGetRequest(GetMessage message)
+        protected void DoGetRequest(GetClientMessage message)
         {
-            //Prendo un nodo a caso
-            MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
-            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
+            uint nodeToAsk = message.NodeToAsk;
+            //Prendo un nodo a caso se non mi è dato un nodo a cui chiedere
+            if(nodeToAsk == UInt32.MaxValue)
+                nodeToAsk = (uint)myMersenneTwister.Next(nodes.Count);
+
+            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt((int)nodeToAsk)}");
 
             if (generalDebug)
                 lock (Console.Out)
@@ -65,11 +69,14 @@ namespace DistributedKeyValueStore.NET
             //Qui la richiesta parte
             receiver.Tell(new GetMessage(message.Key), Self);
         }
-        protected void DoUpdateRequest(UpdateMessage message)
+        protected void DoUpdateRequest(UpdateClientMessage message)
         {
-            //Prendo un nodo a caso
-            MersenneTwister mersenneTwister = new MersenneTwister(Guid.NewGuid().GetHashCode());
-            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt(mersenneTwister.Next(nodes.Count))}");
+            uint nodeToAsk = message.NodeToAsk;
+            //Prendo un nodo a caso se non mi è dato un nodo a cui chiedere
+            if (nodeToAsk == UInt32.MaxValue)
+                nodeToAsk = (uint)myMersenneTwister.Next(nodes.Count);
+
+            ActorSelection receiver = Context.ActorSelection($"/user/node{nodes.ElementAt((int)nodeToAsk)}");
 
             if (generalDebug)
                 lock (Console.Out)
@@ -78,7 +85,7 @@ namespace DistributedKeyValueStore.NET
                 }
 
             //Qui la richiesta parte
-            receiver.Tell(message, Self);
+            receiver.Tell(new UpdateMessage(message.Key, message.Value), Self);
         }
 
         protected void OnGetResponse(GetResponseMessage message)
@@ -132,10 +139,10 @@ namespace DistributedKeyValueStore.NET
                 case GetResponseMessage message:
                     OnGetResponse(message);
                     break;
-                case GetMessage message:
+                case GetClientMessage message:
                     DoGetRequest(message);
                     break;
-                case UpdateMessage message:
+                case UpdateClientMessage message:
                     DoUpdateRequest(message);
                     return;
                 case AddNodeMessage message:

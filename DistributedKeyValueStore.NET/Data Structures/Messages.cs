@@ -76,6 +76,15 @@ namespace DistributedKeyValueStore.NET
         }
     }
 
+    internal class GetClientMessage : KeyMessage
+    {
+        public uint NodeToAsk { get; private set; }
+        public GetClientMessage(uint Key, uint nodeToAsk = UInt32.MaxValue) : base(Key)
+        {
+            this.NodeToAsk = nodeToAsk;
+        }
+    }
+
     internal class GetResponseMessage : KeyValueMessage
     {
         public RequestIdentifier Identifier { get; private set; }
@@ -124,6 +133,15 @@ namespace DistributedKeyValueStore.NET
     internal class UpdateMessage : KeyValueMessage
     {
         public UpdateMessage(uint Key, string? value) : base(Key, value) { }
+    }
+
+    internal class UpdateClientMessage : KeyValueMessage
+    {
+        public uint NodeToAsk { get; private set; }
+        public UpdateClientMessage(uint Key, string? value, uint nodeToAsk = UInt32.MaxValue) : base(Key, value) 
+        { 
+            this.NodeToAsk = nodeToAsk;
+        }
     }
 
     internal class UpdateResponseMessage : KeyValueMessage
