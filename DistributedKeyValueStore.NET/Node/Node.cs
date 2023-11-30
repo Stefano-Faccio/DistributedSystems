@@ -38,7 +38,8 @@ namespace DistributedKeyValueStore.NET
                     (msg is not GetNodeListResponseMessage nl_msg || nl_msg.Identifier != RequestIdentifier.RECOVERY) &&
                     (msg is not GetKeysListResponseMessage kl_msg || kl_msg.Identifier != RequestIdentifier.RECOVERY) &&
                     (msg is not GetResponseMessage gr_msg || gr_msg.Identifier != RequestIdentifier.RECOVERY) &&
-                    msg is not BackOnlineMessage b_msg
+                    msg is not BackOnlineMessage b_msg &&
+                    msg is not TestMessage t_msg
                 )
                 {
                     if (generalDebug)

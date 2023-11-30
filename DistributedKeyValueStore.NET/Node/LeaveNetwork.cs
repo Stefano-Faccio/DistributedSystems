@@ -49,6 +49,14 @@ namespace DistributedKeyValueStore.NET
 
                 //Imposto un timer per avere tempo di completare tutte le richieste in corso
                 Timers.StartSingleTimer($"Shutdown1{leaveId}", new TimeoutShutdown1Message(), TimeSpan.FromMilliseconds(2 * TIMEOUT_TIME));
+
+                if (generalDebug)
+                    lock (Console.Out)
+                    {
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.WriteLine($"{Self.Path.Name} started the process of leaving the network...");
+                        Console.ResetColor();
+                    }
             }
             else
                 throw new Exception("Node not initialided or already leaving");

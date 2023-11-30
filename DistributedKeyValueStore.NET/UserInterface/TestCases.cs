@@ -25,14 +25,19 @@ namespace DistributedKeyValueStore.NET.UserInterface
             "640K ought to be enough for anybody",
             "Lo scopriremo solo vivendo",
             "Houston, we have a problem",
-            "Dignitosamente... brillo!",
+            "Che la forza sia con te!",
             "Fatti non foste a viver come bruti, ma per seguir virtute e canoscenza.",
             "Vivi e lascia vivere.",
             "Hello, World!",
             "It's not a bug, it's a feature.",
             "There are 10 types of people in the world: those who understand binary and those who don't.",
             "Uomini forti destini forti, uomini deboli destini deboli",
-            "Troppo spesso la saggezza è la prudenza più stagnante."
+            "Troppo spesso la saggezza è la prudenza più stagnante.",
+            "L'essere è e non può non essere",
+            "Potrebbe andar peggio! Potrebbe... piovere!",
+            "Tieni i tuoi amici vicini, ma i tuoi nemici più vicini",
+            "Metti la cera, togli la cera",
+            "Al mio segnale scatenate l'Inferno"
         };
 
         static void Main(string[] args)
@@ -199,8 +204,8 @@ namespace DistributedKeyValueStore.NET.UserInterface
             {
                 uint key = chiaviInserite[myMersenneTwister.Next(chiaviInserite.Count)];
 
-                clients[0].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
-                clients[1].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)]));
+                clients[0].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
+                clients[1].Tell(new UpdateClientMessage(key, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
             }
             Thread.Sleep(100);
             foreach (var att in nodi)
@@ -235,16 +240,131 @@ namespace DistributedKeyValueStore.NET.UserInterface
             lock (Console.Out)
             {
                 BackgroundColor = ConsoleColor.DarkRed;
-                WriteLine("\n a node leaving the network : ");
+                WriteLine("\n node 50 leaving the network : ");
                 ResetColor();
                 WriteLine();
             }
             Console.ReadKey();
             {
-                uint nodeId = (uint)Constants.myMersenneTwister.Next(nodi.Count);
+
+                uint nodeId = 5;//(uint)Constants.myMersenneTwister.Next(nodi.Count);
                 nodi[(int)nodeId].Tell(new StopMessage(nodeId));
             }
             Thread.Sleep(500);
+            foreach (var att in nodi)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+
+            WriteLine();
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\n node 60 and 70 crashing : ");
+                ResetColor();
+                WriteLine();
+            }
+            Console.ReadKey();
+            {
+                nodi[6].Tell(new CrashMessage(60));
+                nodi[7].Tell(new CrashMessage(70));
+            }
+            Thread.Sleep(500);
+
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\nAsk key 55 and then update: ");
+                ResetColor();
+                WriteLine();
+            }
+            Console.ReadKey();
+
+            clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage(55, 0));
+            Thread.Sleep(200);
+            clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(55, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
+            Thread.Sleep(200);
+
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\nAsk key 21 and then update: ");
+                ResetColor();
+                WriteLine();
+            }
+            Console.ReadKey();
+
+            clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage(21, 0));
+            Thread.Sleep(200);
+            clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(21, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
+            Thread.Sleep(200);
+
+            foreach (var att in nodi)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+
+            //Si noti chiave 21!!!! in questo caso
+            WriteLine();
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\n node 60 recovering : ");
+                ResetColor();
+                WriteLine();
+            }
+            Console.ReadKey();
+
+            nodi[6].Tell(new RecoveryMessage(60, 30));
+            Thread.Sleep(200);
+            foreach (var att in nodi)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.Blue;
+                WriteLine("NOTE KEY 21");
+                ResetColor();
+                WriteLine();
+            }
+
+            WriteLine();
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\n  Node 60 leaving: ");
+                ResetColor();
+                WriteLine();
+            }
+
+            Console.ReadKey();
+
+            nodi[6].Tell(new StopMessage(60));
+            Thread.Sleep(200);
+            foreach (var att in nodi)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+
+            WriteLine();
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\n  Node 70 recovering: ");
+                ResetColor();
+                WriteLine();
+            }
+
+            Console.ReadKey();
+
+            nodi[7].Tell(new RecoveryMessage(70, 0));
+            Thread.Sleep(200);
             foreach (var att in nodi)
             {
                 att.Tell(new TestMessage());
@@ -255,10 +375,6 @@ namespace DistributedKeyValueStore.NET.UserInterface
 
             /*
              * TODO
-             * CRASH
-             * 
-             * GET CON CRASH
-             * UPDATE CON CRASH
              * LEAVE CON CRASH
              */
         }
