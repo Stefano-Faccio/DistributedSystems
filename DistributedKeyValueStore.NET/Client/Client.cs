@@ -92,12 +92,12 @@ namespace DistributedKeyValueStore.NET
         {
             lock (Console.Out)
             {
-                if (message.Timeout)
+                if (message.Error)
                     Console.ForegroundColor = ConsoleColor.Red;
                 else
                     Console.ForegroundColor = ConsoleColor.Green;
 
-                Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Timeout:{message.Timeout}");
+                Console.WriteLine($"{Self.Path.Name} received GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Error:{message.Error}");
                 Console.ResetColor();
             }
         }

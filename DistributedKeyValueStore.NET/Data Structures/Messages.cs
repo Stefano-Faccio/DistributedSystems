@@ -88,21 +88,20 @@ namespace DistributedKeyValueStore.NET
     internal class GetResponseMessage : KeyValueMessage
     {
         public RequestIdentifier Identifier { get; private set; }
-        public bool Timeout { get; private set; }
+        public bool Error { get; private set; }
         public uint Version { get; private set; }
-
         public GetResponseMessage(uint Key, string? value, uint version, RequestIdentifier identifier) : base(Key, value)
         {
-            //Risposta negativa
-            Timeout = false;
+            //Risposta positiva
+            Error = false;
             Version = version;
             this.Identifier = identifier;
         }
 
         public GetResponseMessage(uint Key, RequestIdentifier identifier) : base(Key, null)
         {
-            //Risposta positiva
-            Timeout = true;
+            //Risposta negativa
+            Error = true;
             this.Identifier = identifier;
         }
     }

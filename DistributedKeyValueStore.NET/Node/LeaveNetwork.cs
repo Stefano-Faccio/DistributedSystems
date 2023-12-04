@@ -237,17 +237,17 @@ namespace DistributedKeyValueStore.NET
             if (receiveDebug)
                 lock (Console.Out)
                 {
-                    if (!message.Timeout)
+                    if (!message.Error)
                         Console.ForegroundColor = ConsoleColor.Green;
                     else
                         Console.ForegroundColor = ConsoleColor.Red;
 
-                    Console.WriteLine($"{Self.Path.Name} received SHUTDOWN GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value} Success:{!message.Timeout}");
+                    Console.WriteLine($"{Self.Path.Name} received SHUTDOWN GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value} Success:{!message.Error}");
                     Console.ResetColor();
                 }
                     
             //Se la richiesta get ha avuto successo
-            if(!message.Timeout)
+            if(!message.Error)
             {
                 //Rimuovo i dati dal dizionario
                 //Non è necessario inviare questi dati

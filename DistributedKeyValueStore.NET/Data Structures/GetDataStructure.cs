@@ -15,6 +15,7 @@ namespace DistributedKeyValueStore.NET
         private List<string?> Values { get; set; }
         private List<uint> Versions { get; set; }
         private List<bool> PreWriteBlocks { get; set; }
+        public int CountResponses {  get; private set; }
 
         public GetDataStructure(uint key, string nodeName, RequestIdentifier identifier) 
         {
@@ -24,6 +25,7 @@ namespace DistributedKeyValueStore.NET
             Values = new List<string?>();
             Versions = new List<uint>();
             PreWriteBlocks = new List<bool>();
+            CountResponses = 0;
         }
 
         public void Add(string? value, uint version, bool preWriteBlock)
@@ -31,6 +33,7 @@ namespace DistributedKeyValueStore.NET
             Values.Add(value);
             Versions.Add(version);
             PreWriteBlocks.Add(preWriteBlock);
+            CountResponses++;
         }
 
         public (string?, uint?) GetReturnValue()

@@ -87,20 +87,30 @@ namespace DistributedKeyValueStore.NET
                     lock (Console.Out)
                         Console.WriteLine($"{Self.Path.Name} received READ RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value ?? "null"} Version: {message.Version} PreWriteBlock: {message.PreWriteBlock}");
 
-                //Cerco di prendere il valore da restituire alla GET
-                (string? returnValue, uint? returnVersion) = getRequestData.GetReturnValue();
-
-                //GetReturnValue ritorna il valore più recente se ho abbastanza risposte i.e. >= READ_QUORUM
-                //oppure torna null nel caso in cui:
-                //- c'è una write in corso di cui non ho (ancora) il valore
-                //- non ho risposte >= READ_QUORUM
-                if (returnValue is not null && returnVersion is not null && getRequestsData.Remove(message.GetId, out GetDataStructure? getRequestDataRemoved))
+                //Se reggiungo il quorum DEVO inviare una risposta
+                if(getRequestData.CountResponses >= READ_QUORUM)
                 {
-                    //Invio la risposta al nodo
-                    Context.ActorSelection($"/user/{getRequestDataRemoved.NodeName}").Tell(new GetResponseMessage(message.Key, returnValue, (uint)returnVersion, getRequestDataRemoved.Identifier));
+                    //Rimuovo i dati dal dizionario
+                    getRequestsData.Remove(message.GetId, out _);
+                    //Cerco di prendere il valore da restituire alla GET
+                    (string? returnValue, uint? returnVersion) = getRequestData.GetReturnValue();
+                    
+                    if (returnValue is not null && returnVersion is not null)
+                    {
+                        //Invio la risposta positiva al nodo 
+                        Context.ActorSelection($"/user/{getRequestData.NodeName}").Tell(new GetResponseMessage(message.Key, returnValue, (uint)returnVersion, getRequestData.Identifier));
 
-                    if (sendDebug)
-                        Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (QUORUM ACHIEVED) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
+                        if (sendDebug)
+                            Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (POSITIVE) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
+                    }
+                    else
+                    {
+                        //Invio la risposta negativa al nodo
+                        Context.ActorSelection($"/user/{getRequestData.NodeName}").Tell(new GetResponseMessage(message.Key, getRequestData.Identifier));
+
+                        if (sendDebug)
+                            Console.WriteLine($"{Self.Path.Name} sended GET RESPONSE (NEGATIVE) to {Sender.Path.Name} => Key:{message.Key} Value:{returnValue ?? "null"}");
+                    }
                 }
             }
             else if (receiveDebug)

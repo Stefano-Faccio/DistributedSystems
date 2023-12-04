@@ -90,7 +90,7 @@ namespace DistributedKeyValueStore.NET
                 }
                 else
                 {
-                    //Il Timeout per resettare prewriteblock è settato con questa funzione
+                    //Il Error per resettare prewriteblock è settato con questa funzione
                     doc.SetPreWriteBlock();
                     // Va bene aggiornare il valore per noi
                     Sender.Tell(new PreWriteResponseMessage(message.Key, message.UpdateId, true, doc.Version), Self);
