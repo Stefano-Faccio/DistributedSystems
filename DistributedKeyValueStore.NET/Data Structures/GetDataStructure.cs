@@ -33,10 +33,8 @@ namespace DistributedKeyValueStore.NET
             PreWriteBlocks.Add(preWriteBlock);
         }
 
-        public string? GetReturnValue()
+        public (string?, uint?) GetReturnValue()
         {
-            string? response = null;
-
             //Se ho almeno read_quorum risposte
             if(Values.Count >= READ_QUORUM)
             {
@@ -72,11 +70,10 @@ namespace DistributedKeyValueStore.NET
                 //Se l'elemento più recente non è in preWrite e ho raggiunto il read quorum 
                 //allora è safe restituire il valore più recente
                 if (!mostRecentPreWrite && validValues >= READ_QUORUM) 
-                    response = Values[mostRecent];
+                    return (Values[mostRecent], Versions[mostRecent]);
             }
-            
-            //getRequestData.Values.Count >= READ_QUORUM
-            return response;
+
+            return (null, null);
         }
 
         public override string? ToString()

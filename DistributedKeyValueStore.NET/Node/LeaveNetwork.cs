@@ -236,8 +236,16 @@ namespace DistributedKeyValueStore.NET
 
             if (receiveDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} received SHUTDOWN GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value} Success:{!message.Timeout}");
+                {
+                    if (!message.Timeout)
+                        Console.ForegroundColor = ConsoleColor.Green;
+                    else
+                        Console.ForegroundColor = ConsoleColor.Red;
 
+                    Console.WriteLine($"{Self.Path.Name} received SHUTDOWN GET RESPONSE from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value} Success:{!message.Timeout}");
+                    Console.ResetColor();
+                }
+                    
             //Se la richiesta get ha avuto successo
             if(!message.Timeout)
             {

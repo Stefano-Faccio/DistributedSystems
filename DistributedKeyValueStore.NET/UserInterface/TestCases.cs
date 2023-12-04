@@ -289,7 +289,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
             lock (Console.Out)
             {
                 BackgroundColor = ConsoleColor.DarkRed;
-                WriteLine("\nAsk key 21 and then update: ");
+                WriteLine("\nAsk key 21, update key 21 and add key 29: ");
                 ResetColor();
                 WriteLine();
             }
@@ -298,6 +298,8 @@ namespace DistributedKeyValueStore.NET.UserInterface
             clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage(21, 0));
             Thread.Sleep(200);
             clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(21, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
+            Thread.Sleep(200);
+            clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(29, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
             Thread.Sleep(200);
 
             foreach (var att in nodi)
@@ -327,8 +329,9 @@ namespace DistributedKeyValueStore.NET.UserInterface
 
             lock (Console.Out)
             {
+                WriteLine();
                 BackgroundColor = ConsoleColor.Blue;
-                WriteLine("NOTE KEY 21");
+                Write("NOTE KEY 21 AND KEY 29");
                 ResetColor();
                 WriteLine();
             }
@@ -345,11 +348,20 @@ namespace DistributedKeyValueStore.NET.UserInterface
             Console.ReadKey();
 
             nodi[6].Tell(new StopMessage(60));
-            Thread.Sleep(200);
+            Thread.Sleep(500);
             foreach (var att in nodi)
             {
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
+            }
+
+            lock (Console.Out)
+            {
+                WriteLine();
+                BackgroundColor = ConsoleColor.Blue;
+                Write("TO SEE A LEAVE FAIL TRY THIS AGAIN BUT REMOVING LINE 140 IN LEAVENETWORK.CS ");
+                ResetColor();
+                WriteLine();
             }
 
             WriteLine();
@@ -371,12 +383,15 @@ namespace DistributedKeyValueStore.NET.UserInterface
                 Thread.Sleep(100);
             }
 
+            WriteLine();
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\n  END DEMO ");
+                ResetColor();
+                WriteLine();
+            }
             Console.ReadKey();
-
-            /*
-             * TODO
-             * LEAVE CON CRASH
-             */
         }
 
         static void PrintHeader(string title, string subtitle, ConsoleColor backgroundColor = ConsoleColor.DarkBlue)

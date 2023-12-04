@@ -89,15 +89,21 @@ namespace DistributedKeyValueStore.NET
     {
         public RequestIdentifier Identifier { get; private set; }
         public bool Timeout { get; private set; }
-        public GetResponseMessage(uint Key, string? value, RequestIdentifier identifier) : base(Key, value)
+        public uint Version { get; private set; }
+
+        public GetResponseMessage(uint Key, string? value, uint version, RequestIdentifier identifier) : base(Key, value)
         {
+            //Risposta negativa
             Timeout = false;
+            Version = version;
             this.Identifier = identifier;
         }
 
-        public GetResponseMessage(uint Key, bool timeout) : base(Key, null)
+        public GetResponseMessage(uint Key, RequestIdentifier identifier) : base(Key, null)
         {
-            Timeout = timeout;
+            //Risposta positiva
+            Timeout = true;
+            this.Identifier = identifier;
         }
     }
 

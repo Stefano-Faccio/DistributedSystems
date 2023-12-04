@@ -60,7 +60,7 @@ namespace DistributedKeyValueStore.NET
         {
             if (receiveDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} response GET KEY LIST => Values:[{string.Join(",", message.KeysList)}]");
+                    Console.WriteLine($"{Self.Path.Name} received GET KEY LIST RESPONSE => Values:[{string.Join(",", message.KeysList)}]");
 
             //Faccio una get di tutte le chiavi che non ho
             message.KeysList.ForEach(key =>
@@ -70,7 +70,7 @@ namespace DistributedKeyValueStore.NET
                     if (sendDebug)
                         lock (Console.Out)
                             Console.WriteLine($"{Self.Path.Name} sended GET KEY to {Sender.Path.Name} => Value:{key}");
-                    Sender.Tell(new GetMessage(this.Id, RequestIdentifier.RECOVERY));
+                    Sender.Tell(new GetMessage(key, RequestIdentifier.RECOVERY));
                 }
             });
 
@@ -81,17 +81,25 @@ namespace DistributedKeyValueStore.NET
         {
             if (receiveDebug)
                 lock (Console.Out)
-                    Console.WriteLine($"{Self.Path.Name} response GET KEY {message.Key} value {message.Value}");
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"{Self.Path.Name} received GET KEY RESPONSE (CRASH RECOVERY) from {Sender.Path.Name} => Key:{message.Key} Value:{message.Value}");
+                    Console.ResetColor();
+                }
 
             if(message.Value is not null)
-                data.Add(message.Key, message.Value);
+                data.Add(message.Key, message.Value, message.Version);
         }
 
         protected void BackOnline(BackOnlineMessage message)
         {
-            if (generalDebug)
+            if (generalDebug && crashed)
                 lock (Console.Out)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"{Self.Path.Name} is back online");
+                    Console.ResetColor();
+                }  
 
             //Riprendo ad elaborare i messaggi
             crashed = false;
