@@ -284,7 +284,32 @@ namespace DistributedKeyValueStore.NET.UserInterface
             clients[myMersenneTwister.Next(clients.Count)].Tell(new GetClientMessage(55, 0));
             Thread.Sleep(200);
             clients[myMersenneTwister.Next(clients.Count)].Tell(new UpdateClientMessage(55, citazioni[myMersenneTwister.Next(citazioni.Count)], 0));
-            Thread.Sleep(200);
+            Thread.Sleep(300);
+
+            lock (Console.Out)
+            {
+                BackgroundColor = ConsoleColor.DarkRed;
+                WriteLine("\nNode 40 Leave: ");
+                ResetColor();
+                WriteLine();
+            }
+            Console.ReadKey();
+            nodi[4].Tell(new StopMessage(40));
+            Thread.Sleep(300);
+            foreach (var att in nodi)
+            {
+                att.Tell(new TestMessage());
+                Thread.Sleep(100);
+            }
+            Thread.Sleep(100);
+            lock (Console.Out)
+            {
+                WriteLine();
+                BackgroundColor = ConsoleColor.Blue;
+                Write("NOTE KEY 35 NOT PRESENT IN NODE 80");
+                ResetColor();
+                WriteLine();
+            }
 
             lock (Console.Out)
             {
@@ -331,7 +356,7 @@ namespace DistributedKeyValueStore.NET.UserInterface
             {
                 WriteLine();
                 BackgroundColor = ConsoleColor.Blue;
-                Write("NOTE KEY 21 AND KEY 29");
+                Write("NOTE KEY 21 AND KEY 29 IN NODE 60");
                 ResetColor();
                 WriteLine();
             }
@@ -353,15 +378,6 @@ namespace DistributedKeyValueStore.NET.UserInterface
             {
                 att.Tell(new TestMessage());
                 Thread.Sleep(100);
-            }
-
-            lock (Console.Out)
-            {
-                WriteLine();
-                BackgroundColor = ConsoleColor.Blue;
-                Write("TO SEE A LEAVE FAIL TRY THIS AGAIN BUT REMOVING LINE 140 IN LEAVENETWORK.CS ");
-                ResetColor();
-                WriteLine();
             }
 
             WriteLine();
