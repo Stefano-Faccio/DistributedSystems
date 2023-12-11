@@ -308,6 +308,14 @@ namespace DistributedKeyValueStore.NET
             this.UpdateId = UpdateId;
         }
     }
+
+    internal class TimeoutClearPreWriteBlockMessage : KeyMessage
+    {
+        public TimeoutClearPreWriteBlockMessage(uint Key) : base(Key)
+        {
+        }
+    }    
+
     internal class TimeoutShutdown1Message : Message
     {
         public TimeoutShutdown1Message()

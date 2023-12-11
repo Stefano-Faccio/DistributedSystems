@@ -62,6 +62,9 @@ namespace DistributedKeyValueStore.NET
                 case TimeoutUpdateMessage message:
                     OnUpdateTimout(message);
                     break;
+                case TimeoutClearPreWriteBlockMessage message:
+                    OnClearPreWriteBlock(message);
+                    break;
                 case TimeoutShutdown1Message message:
                     OnShutdownTimout1(message);
                     break;

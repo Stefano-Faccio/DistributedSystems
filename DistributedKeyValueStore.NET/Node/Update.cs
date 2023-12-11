@@ -92,9 +92,26 @@ namespace DistributedKeyValueStore.NET
                 {
                     //Il Error per resettare prewriteblock è settato con questa funzione
                     doc.SetPreWriteBlock();
+                    //Imposto un timer per pulire il pre-write block 
+                    Timers.StartSingleTimer($"ClearPreWriteBlock{message.Key}", new TimeoutClearPreWriteBlockMessage(message.Key), TimeSpan.FromMilliseconds(TIMEOUT_TIME));
                     // Va bene aggiornare il valore per noi
                     Sender.Tell(new PreWriteResponseMessage(message.Key, message.UpdateId, true, doc.Version), Self);
                 }
+            }
+        }
+
+        private void OnClearPreWriteBlock(TimeoutClearPreWriteBlockMessage message)
+        {
+            Document? doc = data[message.Key];
+            if (doc is not null)
+            {
+                bool preWriteBlock = doc.GetPreWriteBlock();
+                if (deepDebug)
+                    lock (Console.Out)
+                        Console.WriteLine($"{Self.Path.Name} CLEAR PREWRITE BLOCK TIMEOUT => Key:{message.Key} Pre-Write:{preWriteBlock}");
+
+                //Pulisco il pre-write block
+                doc.ClearPreWriteBlock();
             }
         }
 
